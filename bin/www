@@ -2,10 +2,11 @@
 var debug = require('debug')('CardsAgainstContinuity');
 var app = require('../app');
 
-app.set('port', process.env.PORT || 3000);
+app.set('port', process.env.OPENSHIFT_NODEJS_PORT || process.env.PORT || 8080);
+app.set('ip', proces.env.OPENSHIFT_NODEJS_IP || "127.0.0.1");
 
-var server = app.listen(app.get('port'), function() {
-    debug('Express server listening on port ' + server.address().port);
+var server = app.listen(app.get('port'), app.get('ip'), function() {
+    debug('✔ Express server listening at %s:%d ", app.get('ip'), app.get('port'));
 });
 
 var io = app.io;
