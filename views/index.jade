@@ -1,0 +1,18 @@
+﻿extends layout
+block content
+    .container
+        .row
+            .col-md-6.col-md-offset-3
+                h1.text-center Cards Against Continuity
+                p To get started, either create a new game or enter a game key if you have been provided one by your friends!
+                .text-center
+                    a.btn.btn-primary.btn-lg(href='#', role='button')#NewGameButton New Game
+                br
+                br
+                p If you have been provided a game key, enter it here:
+                .text-center
+                    form(role='form').form-inline
+                        .form-group
+                            label.sr-only(for='GameKey') Enter game key
+                            input#GameKey(type='text', placeholder='Enter game key').form-control
+                        button#JoinGameButton.btn.btn-default(type='button') Join Game

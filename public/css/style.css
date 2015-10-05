@@ -1,0 +1,244 @@
+/* 
+    Include bootstrap
+*/
+@import url('bootstrap.css');
+
+body,html {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+  /*padding: 50px*/;
+  padding-top: 50px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+
+.ContentContainer {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-content: flex-start;
+
+}
+
+.PlayAreaDummy {
+    flex-grow: 3;
+}
+
+.PlayArea {
+    position: absolute;
+    top: 50px;
+    left: 0px;
+    right: 0px;
+    bottom: 200px;
+}
+
+.FullSize {
+    width: 100%;
+    height: 100%;
+    display: inline-block;
+}
+
+a {
+  color: #00b7ff;
+}
+
+.ui-card-dragging {
+    box-shadow: 4px 4px 4px rgba(0,0,0,0.5) !important;
+}
+
+.ui-card-dragover {
+    box-shadow: 0 0 4px 4px rgba(0,183,255,0.25) !important;
+}
+
+
+.CardList {
+    white-space: nowrap;
+    overflow-x: scroll;
+    /*overflow-y: hidden !important;*/
+}
+
+.Card {
+    min-width: 125px;
+    min-height: 175px;
+    max-width: 125px;
+    max-height: 175px;
+    border: 1px solid black;
+    vertical-align: top;
+    font-family: Helvetica, sans-serif;
+    font-weight: bold;
+    margin-right: 10px;
+    white-space: normal;
+    border-radius: 4px;
+    padding: 6px 9px;
+
+
+    color: #111;
+    box-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    background: linear-gradient(135deg, #ffffff 0%, #ddd 100%);
+}
+
+
+/*
+    Hand styles
+*/
+.HandContainer {
+    flex-grow: 0 !important;
+    height: 200px;
+}
+
+.HandContainer .CardList {
+    display: flex;
+    flex-direction: row;
+}
+
+.HandContainer .CardList .Card {
+    flex: 0;
+}
+
+/* Pre Round Styles */
+
+.PreRoundContainer {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+.ClaimCardAdministrator {
+    display: inline-block;
+}
+
+.ClaimCardAdministrator button {
+    margin: auto;
+}
+
+/*
+    Card Administrator Styles
+*/
+
+.QuestionContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: -200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.QuestionContainer button {
+    margin-top: 10px;
+}
+
+.Card.Question {
+    background: black;
+    color: white;
+}
+
+/*
+    Answer submission area.
+*/
+.PlaceholderList {
+    display: flex;
+    flex-direction: row;
+    min-height: 175px;
+    justify-content: center;
+}
+
+.AnswerAreaContainer {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    
+}
+.AnswerAreaContainer p {
+    text-align: center;
+}
+
+.AnswerSubmissionButtons {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.AnswerSubmissionButtons button:first-child {
+    margin-right: 10px;
+}
+
+/* Submitted Answers View */
+.SubmittedAnswersContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+
+/* Admin submitted answers list  */
+AdminSubmittedAnswersContainer {
+    display: flex;
+    align-items: center;
+    
+    flex-direction: column;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.AnswerList .CardList {
+    margin-bottom: 10px;
+    padding: 5px;
+
+    display: flex;
+    flex-direction: row;
+    min-height: 175px;
+    justify-content: center;
+    overflow-x: auto;
+}
+
+.AnswerList .CardList:last-child {
+    margin-bottom: 0;
+}
+
+/*  Game Menu  */
+.GameMenuView {
+    position: absolute;
+    top: 60px;
+    right: 10px;
+    z-index: 10;
+}
+
+#EmailInviteList {
+    width: 100%;
+}
+
+
+.ScoreField {
+    box-shadow: 1px 1px 1px 1px rgba(0,0,0,0.25);
+    font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+    font-weight: bold;
+    width: 100px;
+    padding: 10px;
+}

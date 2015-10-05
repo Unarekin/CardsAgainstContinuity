@@ -1,0 +1,12 @@
+﻿.GameMenuView
+    .btn-group
+        button.btn.btn-default.dropdown-toggle.btn-small(type="button", data-toggle="dropdown", aria-haspopup="true", aria-expanded="false")
+            span.glyphicon.glyphicon-cog
+        ul.dropdown-menu.pull-right
+            li: a.disabled(href="#", data-bind="click: InvitePlayers")
+                span.glyphicon.glyphicon-envelope
+                |  Invite Players
+            li.divider(role="separator")
+            li: a(href="#", data-bind="click: ResetCardAdministrator")
+                span.glyphicon.glyphicon-refresh
+                |  Reset Card Administrator

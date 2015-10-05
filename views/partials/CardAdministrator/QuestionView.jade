@@ -1,0 +1,6 @@
+﻿.QuestionContainer(data-bind="fadeVisible: ShowQuestionView")
+    .Card.Question(data-bind="with: QuestionCard")
+        span(data-bind="text: Text")
+    .ViewAnswersButton
+        button.btn.btn-primary.btn-large(type="button", role="button", data-bind="enable: EnableViewAnswersButton, click: ViewSubmittedAnswers") View Answers
+        

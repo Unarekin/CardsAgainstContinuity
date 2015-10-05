@@ -1,0 +1,3 @@
+﻿div(data-bind="if: ShowHand")
+    .CardList(data-bind="foreach: AnswerCards")
+        .Card(data-bind="html: Text, click: $root.CardClick")

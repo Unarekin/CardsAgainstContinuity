@@ -1,0 +1,6 @@
+﻿.AdminSubmittedAnswersContainer(data-bind="fadeVisible: ShowAdminAnswersView")
+    .AnswerList(data-bind="foreach: AdminSubmittedAnswers")
+        .CardList(data-bind="foreach: Answers")
+            .Card(data-bind="html: Text")
+        .text-center
+            button.btn.btn-large.btn-primary(data-bind="click: $root.SelectWinner") Select Winner
