@@ -248,6 +248,8 @@ var GameClientViewModel = function () {
     self.AdminSubmittedAnswers = ko.observableArray([]);
     
     self.AwesomePoints = ko.observable(0);
+    
+    self.SocketConnected = ko.observable(false);
 
     // Computed values
     
@@ -261,7 +263,7 @@ var GameClientViewModel = function () {
     });
     
     self.EnableViewAnswersButton = ko.pureComputed(function () {
-        return (self.AnswersReceived() > 0);
+        return (self.AnswersReceived() > 0 && (self.Socket && self.Socket.connected));
     });
     
     self.ShowSelectAnswerView = ko.pureComputed(function () {
@@ -277,7 +279,7 @@ var GameClientViewModel = function () {
     });
     
     self.CanSubmitAnswer = ko.pureComputed(function () {
-        return ((self.UnsubmittedAnswers().length == self.AnswersToSelect()) && !self.HasSubmittedAnswer());
+        return ((self.Socket && self.Socket.connected) && (self.UnsubmittedAnswers().length == self.AnswersToSelect()) && !self.HasSubmittedAnswer());
     });
     
     self.CanResetAnswer = ko.pureComputed(function () {
@@ -286,7 +288,7 @@ var GameClientViewModel = function () {
     
     self.ShowQuestionView = ko.pureComputed(function () {
         return (self.IsCardAdministrator() && !self.ShowAdminAnswersView());
-    })
+    });
     
 
     // Construction
@@ -313,6 +315,14 @@ var GameClientViewModel = function () {
         self.RaiseError(data.Message);
     });
     
+    self.Socket.on('connect', function () {
+        self.SocketConnected(true);
+    });
+    
+    self.Socket.on('disconnect', function () {
+        self.SocketConnected(false);
+    });
+        
     // An admnistration event has happened!  Probably
     // assigning someone as the Card Administrator.
     self.Socket.on('administration', function (data) {
@@ -353,6 +363,12 @@ var GameClientViewModel = function () {
         } else if (data.EventType == "new round") {
             self.NewRound();
         }
+    });
+    
+    self.Socket.on('expiration', function (data) {
+        console.log("Expiration event");
+        self.RaiseError("This game has been expired due to inactivity.");
+        self.Socket.disconnect();
     });
 
     // Initialize connection.

@@ -1,9 +1,20 @@
-﻿var express = require('express');
+﻿var config = require('./config');
+var express = require('express');
 var path = require('path');
 var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
+var session = require('express-session');
+var filestore = require('session-file-store')(session);
+
+var sharedsession = require("express-socket.io-session");
+
 var bodyParser = require('body-parser');
+var crontab = require("node-crontab");
+
+
+
+
 
 var app = express();
 
@@ -18,7 +29,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
 // uncomment after placing your favicon in /public
-//app.use(favicon(__dirname + '/public/favicon.ico'));
+app.use(favicon(__dirname + '/public/favicon.ico'));
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -27,12 +38,47 @@ app.use(require('stylus').middleware(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 //////////////////////////////////////////////////////////
+//  Session
+//////////////////////////////////////////////////////////
+var SessionStore = new filestore({ path: __dirname + '/sessions' });
+var SessionMiddleware = session({
+    store: SessionStore,
+    secret: 'tx3E&o3{yR@*3Nq3Typu%NHmpc1FT5',
+    resave: true,
+    saveUninitialized: true
+});
+app.SessionStore = SessionStore;
+app.use(SessionMiddleware);
+
+
+//////////////////////////////////////////////////////////
+//  Maintenance cron
+//////////////////////////////////////////////////////////
+var ExpirationJobID = crontab.scheduleJob("0 * * * *", function () {
+    console.log("[" + "CRON".green + "] Checking for inactive games ...");
+    app.GameManager.ExpireOldGames(config.GameTTL);
+});
+console.log("[" + "CRON".green + "] Beginning expiration cron with ID " + ExpirationJobID);
+
+
+//////////////////////////////////////////////////////////
 //  Routes
 //////////////////////////////////////////////////////////
 var router = express.Router();
 /* GET home page. */
 router.get('/', function (req, res) {
-    res.render('index', { title: 'Cards Against Continuity' });
+    var Game = null;
+    console.log("Player ID:" + req.session.PlayerID);
+    if (req.session.PlayerID)
+        Game = app.GameManager.GetGameForPlayer(req.session.PlayerID);
+    
+    if (Game != null) {
+        console.log("Game ID: " + Game.GameID);
+        res.render('index', { title: 'Cards Against Continuity', GameID: Game.GameID });
+    } else {
+        res.render('index', { title: 'Cards Against Continuity' });
+    }
+   
 });
 
 router.get('/api/new', function (req, res) {
@@ -64,12 +110,12 @@ router.get('/api/exists/:id', function (req, res) {
         Status: "error",
         Message: "Invalid game ID."
     };
-
+    
     if (app.GameManager.GameExists(GameID)) {
         Data.Status = "ok";
         Data.Message = "";
     }
-
+    
     res.json(Data);
 
 });
@@ -116,6 +162,9 @@ app.use(function (err, req, res, next) {
 // Sockets
 var socket_io = require("socket.io");
 var io = socket_io();
+io.use(sharedsession(SessionMiddleware, {
+    autoSave: true
+}));
 app.io = io;
 require("./sockets")(app);
 

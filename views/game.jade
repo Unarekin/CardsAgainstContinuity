@@ -5,6 +5,9 @@ block content
     script(src="/js/gameclient.js")
     include ./partials/GameMenuView.jade
     span.ScoreField Score: #[span(data-bind="text: AwesomePoints")]
+    span.DisconnectedMessage.text-danger(data-bind="visible: !SocketConnected()")
+        span.glyphicon.glyphicon-warning-sign
+        |  Lost connection to server
     .PlayAreaDummy
     .PlayArea
         include ./partials/PreRoundView.jade

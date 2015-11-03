@@ -7,10 +7,34 @@ function GameManager() {
     var self = this;
     self.Games = {};
     self.Players = {};
-    
-    
+        
     // Functions
     
+    self.ExpireOldGames = function (MaximumAge) {
+        var Now = new Date();
+        for (var GameID in self.Games) {
+            var Game = self.Games[GameID];
+            // Age in milliseconds
+            var Age = Math.abs(Now - Game.LastActivity);
+            if ((Age / 1000) > MaximumAge) {
+                // Check for active sockets.
+                var Active = false;
+                var Players = Game.GetPlayers();
+                for (var PlayerID in Players) {
+                    var Player = Players[PlayerID];
+                    if (Player.Socket.connected) {
+                        Active = true;
+                        break;
+                    }
+                }
+                if (!Active) {
+                    console.log("Game " + GameID + " beyond expiration date.");
+                    Game.Expire();
+                }
+            }
+        }
+    };
+
     //////////////////////////////////////////////////////////
     // Game functions
     //////////////////////////////////////////////////////////
@@ -56,6 +80,16 @@ function GameManager() {
         self.Games[NewGame.GameID] = NewGame;
         return NewGame;
     }
+    
+    self.GetGameForPlayer = function (PlayerID) {
+        var Player = self.GetPlayer(PlayerID);
+        if (Player) {
+            var GameID = Player.GameID;
+            if (self.GameExists(GameID))
+                return self.GetGame(GameID);
+        }
+        return null;
+    };
     
     //////////////////////////////////////////////////////////
     // Player functions

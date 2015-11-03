@@ -12,10 +12,21 @@ function Game(Manager) {
 
     var GameManager = Manager;
     
+    // This tracks the last time something happened in the game,
+    // so that we can forget about old, inactive games.
+    self.LastActivity = new Date();
+    
     // Functions
-    /*
-     * This function checks to see if 
-     */
+    
+    // Update our last activity marker to now.
+    self.UpdateLastActivity = function () {
+        self.LastActivity = new Date();
+    }
+    
+    self.Expire = function () {
+        self.OnGameExpired.dispatch();
+    }
+
 
     //////////////////////////////////////////////////////////
     //  Card Administrator functions
@@ -41,6 +52,9 @@ function Game(Manager) {
     }
 
     self.SetCardAdministrator = function (Player) {
+        self.UpdateLastActivity();
+        
+
         if (self.HasCardAdministrator()) {
             var Admin = self.GetCardAdministrator();
             Admin.CardAdministrator = false;
@@ -54,11 +68,15 @@ function Game(Manager) {
     //  Player functions
     //////////////////////////////////////////////////////////
     self.AddPlayer = function (Player) {
+        self.UpdateLastActivity();
+
         Player.GameID = self.GameID;
         self.OnPlayerJoined.dispatch(Player);
     }
     
     self.RemovePlayer = function (Player) {
+        self.UpdateLastActivity();
+
         if (Player.GameID == self.GameID) {
             Player.GameID = "";
             self.OnPlayerLeft.dispatch(Player);
@@ -78,11 +96,15 @@ function Game(Manager) {
     // Card drawing/dealing functions
     //////////////////////////////////////////////////////////
     self.DrawQuestion = function () {
+        self.UpdateLastActivity();
+
         var Card = self.Cards.GetQuestion();
         self.OnQuestionDrawn.dispatch(Card);
         return Card;
     }
     self.DrawAnswer = function (amount) {
+        self.UpdateLastActivity();
+
         var Answers = [];
         if (typeof amount === "undefined")
             amount = 1;
@@ -92,6 +114,8 @@ function Game(Manager) {
         return Answers;
     }
     self.DealHand = function (Player) {
+        self.UpdateLastActivity();
+
         var Amount = (10 - Player.Answers.length);
         if (Amount > 0) {
             var Cards = self.DrawAnswer(Amount);
@@ -109,6 +133,9 @@ function Game(Manager) {
     }
     
     self.AddAnswersFrom = function (Player, Cards) {
+        self.UpdateLastActivity();
+        
+
         //self.SubmittedAnswers[Player.ID] = Cards;
         self.SubmittedAnswers[Player.ID] = [];
         var IndicesToRemove = [];
@@ -132,6 +159,9 @@ function Game(Manager) {
     }
     
     self.ReturnAllAnswers = function () {
+        self.UpdateLastActivity();
+        
+
         var Players = self.GetPlayers();
         for (var PlayerID in Players) {
             var Player = Players[PlayerID];
@@ -153,10 +183,12 @@ function Game(Manager) {
     //  Game flow functions
     //////////////////////////////////////////////////////////
     self.BeginRound = function () {
+        self.UpdateLastActivity();
         self.OnRoundBegun.dispatch();
     }
     
     self.EndRound = function () {
+        self.UpdateLastActivity();
         self.SetCardAdministrator(null);
         
         // Add our question and answers to the discard for the deck
@@ -181,10 +213,11 @@ function Game(Manager) {
     self.OnPlayerJoined = new Signal();
     self.OnPlayerLeft = new Signal();
     self.OnAnswersSubmitted = new Signal();
+    self.OnGameExpired = new Signal();
 
     // Construction
     self.Cards = new Deck();
-    self.Cards.LoadCards('./models/cards/Continuity.json');
+    self.Cards.LoadCards('./models/cards/debug.json');
     self.Cards.Shuffle();
 };
 

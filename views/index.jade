@@ -6,7 +6,13 @@ block content
                 h1.text-center Cards Against Continuity
                 p To get started, either create a new game or enter a game key if you have been provided one by your friends!
                 .text-center
-                    a.btn.btn-primary.btn-lg(href='#', role='button')#NewGameButton New Game
+                    button.btn.btn-primary.btn-lg(role='button')#NewGameButton New Game
+                if GameID
+                    br
+                    br
+                    .text-center
+                        p You appear to have been part of a game recently that is still in progress.  If you would like to rejoin this game, click the following button:
+                        button.btn.btn-primary.btn-lg(role='button', data-gameid='#{GameID}')#RejoinGameButton Rejoin Game
                 br
                 br
                 p If you have been provided a game key, enter it here:

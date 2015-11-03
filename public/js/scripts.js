@@ -2,6 +2,7 @@
     // Set up new game button
     $("#NewGameButton").click(NewGameButton);
     $("#JoinGameButton").click(JoinGameButton);
+    $("#RejoinGameButton").click(RejoinGameButton);
 });
 function NewGameButton() {
     $.getJSON("/api/new", function (data) {
@@ -17,6 +18,20 @@ function NewGameButton() {
 
 function JoinGameButton() {
     var GameID = $("#GameKey").val();
+    $.getJSON("/api/exists/" + GameID, function (data) {
+        if (data.Status == "ok") {
+            window.location.href = "/game/" + GameID;
+        } else {
+            bootbox.alert({
+                message: data.Message,
+                title: "Error"
+            });
+        }
+    });
+}
+
+function RejoinGameButton() {
+    var GameID = $("#RejoinGameButton").data("gameid");
     $.getJSON("/api/exists/" + GameID, function (data) {
         if (data.Status == "ok") {
             window.location.href = "/game/" + GameID;

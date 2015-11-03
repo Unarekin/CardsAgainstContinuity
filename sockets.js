@@ -1,7 +1,11 @@
-﻿var colors = require('colors');
+﻿var config = require('./config');
+var colors = require('colors');
 var nodemailer = require('nodemailer');
 var smtpTransport = require('nodemailer-smtp-transport');
 
+var util = require('util');
+var cookie = require('express/node_modules/cookie');
+var cookieParser = require('cookie-parser');
 
 function WireGameSignals(Socket, Game) {
     
@@ -21,6 +25,12 @@ function WireGameSignals(Socket, Game) {
         }
         Socket.broadcast.to(Game.GameID).emit('administration', data);
     });
+    
+    Game.OnGameExpired.add(function () {
+        console.log("Game expired: " + Game.GameID);
+        Socket.broadcast.to(Game.GameID).emit('expiration', { reason: 'Inactivity' });
+
+    });
 
     Game.OnQuestionDrawn.add(function (Question) {
     });
@@ -36,6 +46,7 @@ function WireGameSignals(Socket, Game) {
 
     Game.OnPlayerLeft.add(function (Player) {
     });
+
 }
 
 var SocketRoutes = function (app) {
@@ -47,9 +58,20 @@ var SocketRoutes = function (app) {
         self.Socket = null;
     }
     
+    
     var io = app.io;
     
     console.log('[' + "IO".green + '] Initializing ...');
+    
+    //io.set('authorization', function (data, callback) {
+    //    if (data.headers.cookie) {
+    //        // Save session ID to handshake
+    //        data.cookie = cookie.parse(data.headers.cookie);
+    //        data.sessionId = cookieParser.signedCookie(data.cookie['connect.sid'], config.CookieSecret);
+    //        //console.log("[" + "IO".green + "] Authorization session id: " + data.sessionId);
+    //    }
+    //    callback(null, true);
+    //});
     
     io.on('connection', function (socket) {
         console.log('[' + "IO".green + '] User connected ...');
@@ -58,6 +80,15 @@ var SocketRoutes = function (app) {
         var GameConnection = new GameConnectionModel();
         GameConnection.Socket = socket;
         
+        //var SessionStore = app.SessionStore;
+        //console.log("[" + "IO".green + "] Connection session id: " + sessionId);
+        //console.log(socket.handshake);
+        
+        socket.on('disconnect', function () {
+            if (GameConnection.Player)
+                console.log("[" + "IO".green + "] Player " + GameConnection.Player.ID + " disconnected.");
+        });
+
         // Authentication request event.
         
         socket.on('authentication', function (data, callback) {
@@ -73,15 +104,40 @@ var SocketRoutes = function (app) {
             
             //console.log("[" + "IO".green + "] Authentication event: ");
             if (data.EventType == "New") {
-                // New player is connecting
-                // Generate Player.
-                var NewPlayer = app.GameManager.CreatePlayer();
-                NewPlayer.Socket = socket;
-                GameConnection.Player = NewPlayer;
-                ResponseData.PlayerID = NewPlayer.ID;
-                ResponseData.IsCardAdministrator = false;
-                ResponseData.Status = "ok";
-                
+                // Do we already have a player ID in our session?
+                // If so, let us resume that one.
+                if (socket.handshake.session.PlayerID) {
+                    console.log("Authentication with a player ID:");
+                    console.log(socket.handshake.session.PlayerID);
+                    var Player = app.GameManager.GetPlayer(socket.handshake.session.PlayerID);
+                    if (Player) {
+                        if (GameConnection.Socket.connected) {
+                            console.log("[" + "IO".green + "] Player " + Player.ID + " reconnected.");
+                            GameConnection.Player = Player;
+                            ResponseData.PlayerID = Player.ID;
+                            ResponseData.IsCardAdministrator = Player.CardAdministrator;
+                            ResponseData.Status = "ok"
+                        }
+                    } else {
+                        // Not a valid Player ID.  Baleet it and let the following code create a new one.
+                        delete socket.handshake.session.PlayerID;
+                    }
+                }
+
+                if (!socket.handshake.session.PlayerID) {
+                    
+                    // New player is connecting
+                    // Generate Player.
+                    var NewPlayer = app.GameManager.CreatePlayer();
+                    NewPlayer.Socket = socket;
+                    GameConnection.Player = NewPlayer;
+                    ResponseData.PlayerID = NewPlayer.ID;
+                    ResponseData.IsCardAdministrator = false;
+                    ResponseData.Status = "ok";
+                    
+                    socket.handshake.session.PlayerID = NewPlayer.ID;
+                }
+
                 // Are they attempting to join a proper game?
                 if (app.GameManager.GameExists(data.GameID)) {
                     var Game = app.GameManager.GetGame(data.GameID);
@@ -192,7 +248,7 @@ var SocketRoutes = function (app) {
                     ResponseData.Answers = GameConnection.Game.SubmittedAnswers;
                     ResponseData.Status = "ok";
                     ResponseData.Message = "";
-                    console.log("[" + "IO".green + "] Responding.");
+                    //console.log("[" + "IO".green + "] Responding.");
                 } else {
                     ResponseData.Status = "error";
                     ResponseData.Message = "You are not the Card Administrator.";
@@ -231,7 +287,7 @@ var SocketRoutes = function (app) {
                                 var Data = {
                                     EventType: "Received",
                                     PlayerID: GameConnection.Player.ID,
-                                    Quantity: data.Answers.length
+                                    Quantity: 1//data.Answers.length
                                 };
                                 Admin.Socket.emit('answer', Data);
                             })();
@@ -350,6 +406,8 @@ var SocketRoutes = function (app) {
             if (callback)
                 callback(ResponseData);
         });
+
+
     });
 }
 module.exports = SocketRoutes;

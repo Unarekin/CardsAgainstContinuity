@@ -242,3 +242,14 @@ AdminSubmittedAnswersContainer {
     width: 100px;
     padding: 10px;
 }
+
+.DisconnectedMessage {
+    font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+    font-weight: bold;
+    width: 100%;
+    height: 100px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
