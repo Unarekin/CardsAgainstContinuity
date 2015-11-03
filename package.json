@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "start": "nodemon ./bin/www --ignore public"
+    "start": "node ./bin/www"
   },
   "description": "CardsAgainstContinuity",
   "author": {

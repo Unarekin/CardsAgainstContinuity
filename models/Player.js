@@ -8,7 +8,7 @@
 
     self.Socket = null;
     self.ID = "";
-    
+    self.Score = 0;
     self.GameID = "";
 
     // Functions

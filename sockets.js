@@ -31,19 +31,19 @@ function WireGameSignals(Socket, Game) {
         Socket.broadcast.to(Game.GameID).emit('expiration', { reason: 'Inactivity' });
 
     });
-
+    
     Game.OnQuestionDrawn.add(function (Question) {
     });
-
+    
     Game.OnRoundBegun.add(function () {
     });
-
+    
     Game.OnRoundEnded.add(function () {
     });
-
+    
     Game.OnPlayerJoined.add(function (Player) {
     });
-
+    
     Game.OnPlayerLeft.add(function (Player) {
     });
 
@@ -88,7 +88,7 @@ var SocketRoutes = function (app) {
             if (GameConnection.Player)
                 console.log("[" + "IO".green + "] Player " + GameConnection.Player.ID + " disconnected.");
         });
-
+        
         // Authentication request event.
         
         socket.on('authentication', function (data, callback) {
@@ -99,6 +99,7 @@ var SocketRoutes = function (app) {
                 HasCardAdministrator: false,
                 AnswerCount: 0,
                 Message: "",
+                CurrentScore: 0,
                 Cards: []
             };
             
@@ -117,13 +118,14 @@ var SocketRoutes = function (app) {
                             ResponseData.PlayerID = Player.ID;
                             ResponseData.IsCardAdministrator = Player.CardAdministrator;
                             ResponseData.Status = "ok"
+                            ResponseData.CurrentScore = Player.Score;
                         }
                     } else {
                         // Not a valid Player ID.  Baleet it and let the following code create a new one.
                         delete socket.handshake.session.PlayerID;
                     }
                 }
-
+                
                 if (!socket.handshake.session.PlayerID) {
                     
                     // New player is connecting
@@ -137,7 +139,7 @@ var SocketRoutes = function (app) {
                     
                     socket.handshake.session.PlayerID = NewPlayer.ID;
                 }
-
+                
                 // Are they attempting to join a proper game?
                 if (app.GameManager.GameExists(data.GameID)) {
                     var Game = app.GameManager.GetGame(data.GameID);
@@ -149,6 +151,14 @@ var SocketRoutes = function (app) {
                         ResponseData.HasCardAdministrator = true;
                         var Question = GameConnection.Game.CurrentQuestion;
                         ResponseData.AnswerCount = Question.numAnswers;
+                        if (GameConnection.Player.CardAdministrator) {
+                            ResponseData.Question = GameConnection.Game.CurrentQuestion;
+                            ResponseData.SubmittedAnswerCount = 0;
+                            for (var PlayerID in GameConnection.Game.SubmittedAnswers) {
+                                ResponseData.SubmittedAnswerCount++;
+                            }
+
+                        }
                     }
                     // Join teh socket to a 'room' for the game.
                     WireGameSignals(socket, Game);
@@ -192,8 +202,8 @@ var SocketRoutes = function (app) {
                     ResponseData.Question = Question;
                     ResponseData.Status = "ok";
                     ResponseData.Message = "";
-
-
+                    
+                    
                     console.log("[" + "IO".green + "] Assigning new Card Administrator: ", GameConnection.Player.ID);
                     GameConnection.Game.SetCardAdministrator(GameConnection.Player)
                 } else {
@@ -216,7 +226,7 @@ var SocketRoutes = function (app) {
                     io.to(GameConnection.Game.GameID).emit('administration', { EventType: "reset" })
                     ResponseData.Status = "ok";
                     ResponseData.Message = "";
-
+                    
                     GameConnection.Game.EndRound();
                     GameConnection.Game.BeginRound();
                 } else {
@@ -228,7 +238,7 @@ var SocketRoutes = function (app) {
                 ResponseData.Message = "Unknown administration event type: " + data.EventType;
             }
             
-
+            
             // Return our callback.
             if (callback)
                 callback(ResponseData);
@@ -255,7 +265,7 @@ var SocketRoutes = function (app) {
                     console.log("[" + "Error".red + "] Answer request received from non-Administrator.");
                 }
             }
-
+            
             if (data.EventType == "Submission") {
                 if (GameConnection.Game.HasCardAdministrator()) {
                     // Verify that the correct number of answers were submitted.
@@ -311,12 +321,23 @@ var SocketRoutes = function (app) {
                         var Winner = app.GameManager.GetPlayer(WinnerID);
                         
                         // Remove answers from all players.
-
+                        
                         // Notify winner to increase their score.
-                        Winner.Socket.emit('gameplay', { EventType: "score", Amount: 1 });
-
+                        Winner.Score++;
+                        Winner.Socket.emit('gameplay', {
+                            EventType: "score",
+                            Amount: 1 ,
+                            Total: Winner.Score
+                        });
+                        
                         // Notify everybody but the admin that a new round is to start.
-                        GameConnection.Player.Socket.to(GameConnection.Game.GameID).emit('gameplay', { EventType: "new round" });
+                        var Answers = GameConnection.Game.GetAnswersFor(app.GameManager.GetPlayer(WinnerID));
+                        var Data = {
+                            EventType       : "new round",
+                            WinningAnswers  : Answers,
+                            WinningPlayer   : WinnerID
+                        };
+                        GameConnection.Player.Socket.to(GameConnection.Game.GameID).emit('gameplay', Data);
                         GameConnection.Game.EndRound();
                         GameConnection.Game.BeginRound();
                     } else {
@@ -337,11 +358,19 @@ var SocketRoutes = function (app) {
                     ResponseData.Answers = [];
                 else
                     ResponseData.Answers = Cards;
-
+                
                 ResponseData.Status = "ok";
                 ResponseData.Message = "";
             }
-
+            
+            // The user has requested to 'refresh' their hand.  This is generally because they are showing
+            // fewer than 10 cards.
+            if (data.EventType == "refresh") {
+                ResponseData.Answers = GameConnection.Player.Answers;
+                ResponseData.Status = "ok";
+                ResponseData.Message = "";
+            }
+            
             // Remit response
             if (callback)
                 callback(ResponseData);
@@ -352,7 +381,7 @@ var SocketRoutes = function (app) {
             }
              * */
         });
-
+        
         socket.on('invitation', function (data, callback) {
             //var regex = /^([a-zA-Z0-9_.+-])+\@(([a-zA-Z0-9-])+\.)+([a-zA-Z0-9]{2,4})+$/;
             
@@ -368,7 +397,7 @@ var SocketRoutes = function (app) {
                 
                 ResponseData.Status = "ok";
                 ResponseData.Message = "";
-
+                
                 var transporter = nodemailer.createTransport(smtpTransport({
                     host: 'mail.blackspork.com',
                     port: 25,

@@ -7,12 +7,9 @@
                 span.glyphicon.glyphicon-envelope
                 |  Invite Players
             li.divider(role="separator")
-            li: a(href='#')
+            li: a(href='#', data-bind="click: RefreshHand")
                 span.glyphicon.glyphicon-refresh
                 |  Refresh Hand
-            li: a(href='#')
-                span.glyphicon.glyphicon-trash
-                |  Mulligan
             li.divider(role="separator")
             li: a(href="#", data-bind="click: ResetCardAdministrator")
                 span.glyphicon.glyphicon-refresh

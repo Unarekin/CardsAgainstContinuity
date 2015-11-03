@@ -8,7 +8,9 @@ var GameClientViewModel = function () {
     var self = this;
     // Functions
     
-    self.NewRound = function () {
+    self.NewRound = function (NewRoundData) {
+        console.log("New round:");
+        console.log(NewRoundData);
         // Nuke eeeeeeeerrything.
         self.HasCardAdministrator(false);
         self.IsCardAdministrator(false);
@@ -17,13 +19,14 @@ var GameClientViewModel = function () {
         self.UnsubmittedAnswers.removeAll();
         self.SubmittedAnswers.removeAll();
         self.AnswersReceived(0);
-
+        
         self.HasSubmittedAnswer(false);
         self.ShowAdminAnswersView(false);
         self.AdminSubmittedAnswers.removeAll();
-
+        
         // Request cards to refill our hand.
         var CardsNeeded = (10 - self.AnswerCards.length);
+        console.log("New round.  Drawing " + CardsNeeded + " cards.");
         var Data = {
             EventType: "draw",
             Amount: CardsNeeded
@@ -32,8 +35,18 @@ var GameClientViewModel = function () {
             if (response.Status == "error") {
                 self.RaiseError(response.Message);
             } else if (response.Status == "ok") {
+                var message = "A new round has begun!<br />";
+                if (NewRoundData.WinningPlayer == self.PlayerID())
+                    message += "<b class='text-center'>You've won!</b><br />";
+                else {
+                    message += "Winning answer(s):<br/>";
+                    for (var i = 0; i < NewRoundData.WinningAnswers.length; i++) {
+                        message += NewRoundData.WinningAnswers[i].text + "<br />";
+                    }
+                }
+                message += "Your score: <b>" + self.AwesomePoints() + "</b>.";
                 bootbox.alert({
-                    message: "A new round has begun!",
+                    message: message,
                     title: "New Round"
                 });
                 for (var i = 0; i < response.Answers.length; i++) {
@@ -43,7 +56,7 @@ var GameClientViewModel = function () {
             }
         });
     };
-
+    
     self.RequestCardAdministrator = function () {
         var Data = {
             EventType: "request"
@@ -98,7 +111,7 @@ var GameClientViewModel = function () {
             
             console.log(Data);
             self.Socket.emit('answer', Data, function (response) {
-                console.log("Response:", response);
+                //console.log("Response:", response);
                 if (response.Status == "error") {
                     self.RaiseError(response.Message);
                 }
@@ -146,14 +159,16 @@ var GameClientViewModel = function () {
             PlayerID: Answer.OwnerID()
         };
         self.Socket.emit('answer', Data, function (response) {
-            if (response.Status == "ok") {
-                self.NewRound();
-            } else if (response.Status == "error") {
+            if (response.Status == "error")
                 self.RaiseError(response.Message);
-            }
+            //if (response.Status == "ok") {
+            //    self.NewRound();
+            //} else if (response.Status == "error") {
+            //    self.RaiseError(response.Message);
+            //}
         });
     }
-
+    
     self.ResetCardAdministrator = function () {
         bootbox.confirm("Are you sure you wish to reset the Card Administrator?  Any submitted answers will be returned to their owners.", function (result) {
             if (result) {
@@ -182,13 +197,13 @@ var GameClientViewModel = function () {
         bootbox.alert(AlertMessage);
         $("#EmailInviteLink").click(self.EmailInvite);
     };
-
+    
     self.EmailInvite = function () {
         //console.log("Email invite");
         
         var EmailMessage = "Please enter the email address(es) to which you wish to send an invitation, one per line:<br />\r\n" +
                             "<textarea id='EmailInviteList'></textarea>"
-
+        
         bootbox.dialog({
             message: EmailMessage,
             title: "Invite by Email",
@@ -206,7 +221,7 @@ var GameClientViewModel = function () {
                             GameID: GameID,
                             Recipients: []
                         };
-
+                        
                         var text = $("#EmailInviteList").val();
                         var lines = text.split("\n");
                         for (var i = 0; i < lines.length; i++) {
@@ -226,7 +241,24 @@ var GameClientViewModel = function () {
             }
         });
     };
-
+    
+    self.RefreshHand = function () {
+        var Data = {
+            EventType: "refresh"
+        }
+        self.Socket.emit('answer', Data, function (response) {
+            if (response.Status == "ok") {
+                // Empty our current hand
+                self.AnswerCards.removeAll();
+                for (var i = 0; i < response.Answers.length; i++) {
+                    self.AnswerCards.push(new CardViewModel(response.Answers[i]));
+                }
+            } else {
+                self.RaiseError(response.Message);
+            }
+        });
+    };
+    
     // Observables
     self.PlayerID = ko.observable("");
     
@@ -250,7 +282,7 @@ var GameClientViewModel = function () {
     self.AwesomePoints = ko.observable(0);
     
     self.SocketConnected = ko.observable(false);
-
+    
     // Computed values
     
     // Most of these are to handle different states for the UI.
@@ -263,7 +295,7 @@ var GameClientViewModel = function () {
     });
     
     self.EnableViewAnswersButton = ko.pureComputed(function () {
-        return (self.AnswersReceived() > 0 && (self.Socket && self.Socket.connected));
+        return (self.AnswersReceived() > 0 && (self.SocketConnected()));
     });
     
     self.ShowSelectAnswerView = ko.pureComputed(function () {
@@ -279,7 +311,7 @@ var GameClientViewModel = function () {
     });
     
     self.CanSubmitAnswer = ko.pureComputed(function () {
-        return ((self.Socket && self.Socket.connected) && (self.UnsubmittedAnswers().length == self.AnswersToSelect()) && !self.HasSubmittedAnswer());
+        return ((self.SocketConnected()) && (self.UnsubmittedAnswers().length == self.AnswersToSelect()) && !self.HasSubmittedAnswer());
     });
     
     self.CanResetAnswer = ko.pureComputed(function () {
@@ -290,20 +322,20 @@ var GameClientViewModel = function () {
         return (self.IsCardAdministrator() && !self.ShowAdminAnswersView());
     });
     
-
+    
     // Construction
-
+    
     //self.DroppedAnswer.subscribe(function (value) {
     //    if (value != null) {
     //        self.AnswerCards.remove(value);
     //        self.UnsubmittedAnswers.push(value);
     //        self.DroppedAnswer(null);
-            
+    
     //        console.log(self.UnsubmittedAnswers());
     //        console.log(self.DroppedAnswer());
     //    }
     //});
-
+    
     // Wire in our socket.io stuff
     console.log("Initializing socket");
     self.RaiseError = function (Error) {
@@ -322,7 +354,7 @@ var GameClientViewModel = function () {
     self.Socket.on('disconnect', function () {
         self.SocketConnected(false);
     });
-        
+    
     // An admnistration event has happened!  Probably
     // assigning someone as the Card Administrator.
     self.Socket.on('administration', function (data) {
@@ -337,7 +369,7 @@ var GameClientViewModel = function () {
                 self.AnswerCards.push(Card);
             }
             self.SubmittedAnswers.removeAll();
-
+            
             for (var i = 0; i < self.UnsubmittedAnswers().length; i++) {
                 var Card = self.UnsubmittedAnswers()[i];
                 self.AnswerCards.push(Card);
@@ -349,7 +381,7 @@ var GameClientViewModel = function () {
     // An answer event has occurred.  Likely, this is notification
     // that a user has submitted an answer.
     self.Socket.on('answer', function (data) {
-        console.log("Answer event:", data);
+        //console.log("Answer event:", data);
         if (data.EventType == "Received") {
             // An answer is received.
             self.AnswersReceived(self.AnswersReceived() + data.Quantity);
@@ -361,7 +393,7 @@ var GameClientViewModel = function () {
             var Amount = parseInt(data.Amount);
             self.AwesomePoints(self.AwesomePoints() + Amount);
         } else if (data.EventType == "new round") {
-            self.NewRound();
+            self.NewRound(data);
         }
     });
     
@@ -370,7 +402,7 @@ var GameClientViewModel = function () {
         self.RaiseError("This game has been expired due to inactivity.");
         self.Socket.disconnect();
     });
-
+    
     // Initialize connection.
     (function () {
         var AuthentData = {
@@ -387,7 +419,14 @@ var GameClientViewModel = function () {
                 }
                 self.IsCardAdministrator(response.IsCardAdministrator);
                 self.HasCardAdministrator(response.HasCardAdministrator);
-
+                self.AwesomePoints(response.CurrentScore);
+                
+                if (response.IsCardAdministrator) {
+                    // We're the card admin
+                    self.QuestionCard(new CardViewModel(response.Question));
+                    self.AnswersReceived(response.SubmittedAnswerCount);
+                }
+                
                 self.AnswersToSelect(response.AnswerCount);
 
             } else {
@@ -403,9 +442,9 @@ var GameClientViewModel = function () {
 var CardViewModel = function (Card) {
     // Properties
     var self = this;
-
+    
     // Functions
-
+    
     // Observables
     self.Text = ko.observable(Card.text);
     self.CardType = ko.observable(Card.cardType);
@@ -422,7 +461,7 @@ var AnswerViewModel = function (OwnerID, Answers) {
     // Properties
     var self = this;
     // Functions
-
+    
     // Observables
     self.OwnerID = ko.observable(OwnerID);
     self.Answers = ko.observableArray();
