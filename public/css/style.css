@@ -80,13 +80,14 @@ a {
     background: linear-gradient(135deg, #ffffff 0%, #ddd 100%);
 }
 
-
 /*
     Hand styles
 */
 .HandContainer {
     flex-grow: 0 !important;
     height: 200px;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
 .HandContainer .CardList {
@@ -97,6 +98,7 @@ a {
 .HandContainer .CardList .Card {
     flex: 0;
 }
+
 
 /* Pre Round Styles */
 
@@ -131,6 +133,15 @@ a {
     align-items: center;
     justify-content: center;
     flex-direction: column;
+}
+
+.ViewAnswerQuestionContainer {
+    position: absolute;
+    position: absolute;
+    left: 0;
+    bottom: -200px;
+    padding-left: 10px;
+    padding-bottom: 10px;
 }
 
 .QuestionContainer button {
@@ -287,4 +298,25 @@ AdminSubmittedAnswersContainer {
     justify-content: center;
     align-items: center;
     margin-bottom: 10px;
+}
+
+
+
+
+@media (max-width: 640px) {
+    .Card {
+        min-width: 75px;
+        min-height: 125px;
+        max-width: 75px;
+        max-height: 125px;
+        font-size: 10px;
+    }
+
+    .HandContainer {
+        height: 150px;
+    }
+
+    .AnswerList .CardList {
+        min-height: 125px;
+    }
 }

@@ -263,11 +263,11 @@ router.get('/admin/login', function (req, res) {
 });
 
 router.get('/admin', function (req, res) {
-    //if (req.isAuthenticated()) {
+    if (req.isAuthenticated()) {
         res.render('Backend/index', { title: 'Cards Against Continuity' , user: Users[0]});
-    //} else {
-    //    res.render('Backend/login', { title: 'Cards Against Continuity' });
-    //}
+    } else {
+        res.render('Backend/login', { title: 'Cards Against Continuity' });
+    }
 });
 
 app.use(router);

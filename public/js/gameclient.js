@@ -109,7 +109,7 @@ var GameClientViewModel = function () {
                 Data.Answers.push(Card.ID());
             }
             
-            console.log(Data);
+            //console.log(Data);
             self.Socket.emit('answer', Data, function (response) {
                 //console.log("Response:", response);
                 if (response.Status == "error") {
@@ -137,16 +137,30 @@ var GameClientViewModel = function () {
             // Request our answers from the server.
             
             self.Socket.emit('answer', { EventType: "Request" }, function (response) {
-                console.log("Answer response:", response);
+                //console.log("Answer response:", response);
                 if (response.Status == "error") {
                     self.RaiseError(response.Message);
                 } else {
-                    self.AdminSubmittedAnswers.removeAll();
+                    //self.AdminSubmittedAnswers.removeAll();
+                    var AnswerArray = [];
                     for (var OwnerID in response.Answers) {
                         var Answers = response.Answers[OwnerID];
                         var AnswerVM = new AnswerViewModel(OwnerID, Answers);
-                        self.AdminSubmittedAnswers.push(AnswerVM);
+                        //self.AdminSubmittedAnswers.push(AnswerVM);
+                        AnswerArray.push(AnswerVM);
                     }
+                    // Shuffle
+                    var currentIndex = AnswerArray.length, temporaryValue, randomIndex;
+                    while (0 !== currentIndex) {
+                        randomIndex = Math.floor(Math.random() * currentIndex);
+                        currentIndex -= 1;
+                        temporaryValue = AnswerArray[currentIndex];
+                        AnswerArray[currentIndex] = AnswerArray[randomIndex];
+                        AnswerArray[randomIndex] = temporaryValue;
+                    }
+                    
+                    self.AdminSubmittedAnswers(AnswerArray);
+
                     self.ShowAdminAnswersView(true);
                 }
             });

@@ -4,3 +4,7 @@
             .Card(data-bind="html: Text")
         .text-center
             button.btn.btn-large.btn-primary(data-bind="click: $root.SelectWinner") Select Winner
+    .ViewAnswerQuestionContainer
+        p Current Question:
+        .Card.Question(data-bind="with: QuestionCard")
+            span(data-bind="text: Text")        

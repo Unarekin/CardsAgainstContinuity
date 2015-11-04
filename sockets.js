@@ -338,7 +338,8 @@ var SocketRoutes = function (app) {
                             WinningAnswers  : Answers,
                             WinningPlayer   : WinnerID
                         };
-                        GameConnection.Player.Socket.to(GameConnection.Game.GameID).emit('gameplay', Data);
+                        //GameConnection.Player.Socket.to(GameConnection.Game.GameID).emit('gameplay', Data);
+                        io.to(GameConnection.Game.GameID).emit('gameplay', Data);
                         GameConnection.Game.EndRound();
                         GameConnection.Game.BeginRound();
                     } else {
