@@ -17,13 +17,21 @@ body {
 .ContentContainer {
     height: 100%;
     width: 100%;
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
     display: flex;
+    -webkit-flex-direction: column;
     flex-direction: column;
+
+    -webkit-align-content: flex-start;
     align-content: flex-start;
 
 }
 
 .PlayAreaDummy {
+    -webkit-flex-grow: 3;
     flex-grow: 3;
 }
 
@@ -84,6 +92,7 @@ a {
     Hand styles
 */
 .HandContainer {
+    -webkit-flex-grow: 0 !important;
     flex-grow: 0 !important;
     height: 200px;
     padding-left: 10px;
@@ -91,11 +100,20 @@ a {
 }
 
 .HandContainer .CardList {
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
     display: flex;
+    -webkit-flex-direction: row;
     flex-direction: row;
 }
 
 .HandContainer .CardList .Card {
+    -webkit-box-flex: 0;
+    -moz-box-flex: 0;
+    -webkit-box-flex: 0;
+    -ms-flex: 0;
     flex: 0;
 }
 
@@ -105,9 +123,16 @@ a {
 .PreRoundContainer {
     width: 100%;
     height: 100%;
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
     display: flex;
+    -webkit-flex-direction: row;
     flex-direction: row;
+    -webkit-justify-content: center;
     justify-content: center;
+    -webkit-align-items: center;
     align-items: center;
 }
 
@@ -129,9 +154,16 @@ a {
     left: 0;
     right: 0;
     bottom: -200px;
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
     display: flex;
+    -webkit-align-items: center;
     align-items: center;
+    -webkit-justify-content: center;
     justify-content: center;
+    -webkit-flex-direction: column;
     flex-direction: column;
 }
 
@@ -157,17 +189,30 @@ a {
     Answer submission area.
 */
 .PlaceholderList {
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
     display: flex;
+    -webkit-flex-direction: row;
     flex-direction: row;
     min-height: 175px;
+    -webkit-justify-content: center;
     justify-content: center;
 }
 
 .AnswerAreaContainer {
     width: 100%;
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
     display: flex;
+    -webkit-align-items: center;
     align-items: center;
+    -webkit-justify-content: center;
     justify-content: center;
+    -webkit-flex-direction: column;
     flex-direction: column;
     position: absolute;
     top: 0;
@@ -182,8 +227,14 @@ a {
 
 .AnswerSubmissionButtons {
     margin-top: 10px;
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
     display: flex;
+    -webkit-flex-direction: row;
     flex-direction: row;
+    -webkit-justify-content: center;
     justify-content: center;
 }
 
@@ -193,9 +244,16 @@ a {
 
 /* Submitted Answers View */
 .SubmittedAnswersContainer {
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
     display: flex;
+    -webkit-align-items: center;
     align-items: center;
+    -webkit-justify-content: center;
     justify-content: center;
+    -webkit-flex-direction: column;
     flex-direction: column;
     position: absolute;
     top: 0;
@@ -207,9 +265,14 @@ a {
 
 /* Admin submitted answers list  */
 AdminSubmittedAnswersContainer {
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
     display: flex;
+    -webkit-align-items: center;
     align-items: center;
-    
+    -webkit-flex-direction: column;
     flex-direction: column;
     position: absolute;
     top: 0;
@@ -222,9 +285,15 @@ AdminSubmittedAnswersContainer {
     margin-bottom: 10px;
     padding: 5px;
 
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
     display: flex;
+    -webkit-flex-direction: row;
     flex-direction: row;
     min-height: 175px;
+    -webkit-justify-content: center;
     justify-content: center;
     overflow-x: auto;
 }
@@ -259,9 +328,16 @@ AdminSubmittedAnswersContainer {
     font-weight: bold;
     width: 100%;
     height: 100px;
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
     display: flex;
+    -webkit-flex-direction: row;
     flex-direction: row;
+    -webkit-justify-content: center;
     justify-content: center;
+    -webkit-align-items: center;
     align-items: center;
 }
 
@@ -293,9 +369,16 @@ AdminSubmittedAnswersContainer {
 
 .LoginError {
     width: 100%;
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
     display: flex;
+    -webkit-flex-direction: row;
     flex-direction: row;
+    -webkit-justify-content: center;
     justify-content: center;
+    -webkit-align-items: center;
     align-items: center;
     margin-bottom: 10px;
 }
