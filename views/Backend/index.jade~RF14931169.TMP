@@ -1,0 +1,17 @@
+﻿extends ../layout
+block content
+    script(src='/js/backend/BackEndViewModel.js')
+    h2 Welcome, #{user.username}!
+
+    .container
+        .row
+            .col-md-4
+                h4 Active Games: #[span(data-bind='text: ActiveGames.length')]
+                div(data-bind='foreach: ActiveGames')
+                    span(data-bind='text: GameID')
+            .col-md-4.col-md-offset-4
+                h4 Card Sets
+                div(data-bind='foreach: CardSets')
+                    div
+                        span(data-bind='text: Name')
+                        span.pull-right Test

@@ -85,8 +85,10 @@ var SocketRoutes = function (app) {
         //console.log(socket.handshake);
         
         socket.on('disconnect', function () {
-            if (GameConnection.Player)
+            if (GameConnection.Player) {
                 console.log("[" + "IO".green + "] Player " + GameConnection.Player.ID + " disconnected.");
+                GameConnection = null;
+            }
         });
         
         // Authentication request event.
@@ -108,10 +110,9 @@ var SocketRoutes = function (app) {
                 // Do we already have a player ID in our session?
                 // If so, let us resume that one.
                 if (socket.handshake.session.PlayerID) {
-                    console.log("Authentication with a player ID:");
-                    console.log(socket.handshake.session.PlayerID);
                     var Player = app.GameManager.GetPlayer(socket.handshake.session.PlayerID);
                     if (Player) {
+                        Player.Socket = socket;
                         if (GameConnection.Socket.connected) {
                             console.log("[" + "IO".green + "] Player " + Player.ID + " reconnected.");
                             GameConnection.Player = Player;

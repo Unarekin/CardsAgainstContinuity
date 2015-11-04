@@ -7,13 +7,16 @@ var cookieParser = require('cookie-parser');
 var session = require('express-session');
 var filestore = require('session-file-store')(session);
 
+var fs = require('fs');
+var path = require('path');
+
 var sharedsession = require("express-socket.io-session");
+var flash = require('connect-flash');
 
 var bodyParser = require('body-parser');
 var crontab = require("node-crontab");
 
-
-
+var promise = require('promise');
 
 
 var app = express();
@@ -28,14 +31,17 @@ app.GameManager = new GameManager();
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
+app.set('env', 'development');
+
 // uncomment after placing your favicon in /public
 app.use(favicon(__dirname + '/public/favicon.ico'));
 app.use(logger('dev'));
+app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser());
 app.use(require('stylus').middleware(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public')));
+
 
 //////////////////////////////////////////////////////////
 //  Session
@@ -49,6 +55,50 @@ var SessionMiddleware = session({
 });
 app.SessionStore = SessionStore;
 app.use(SessionMiddleware);
+
+//////////////////////////////////////////////////////////
+//  Authentication
+//////////////////////////////////////////////////////////
+var passport = require('passport');
+var LocalStrategy = require('passport-local').Strategy;
+var Users = require('./models/Users.json');
+passport.use(new LocalStrategy({
+    usernameField: 'Username',
+    passwordField: 'Password'
+}, function (username, password, callback) {
+    //console.log(arguments);
+    //console.log("Attempting to authenticate " + username + " ...");
+    for (var i = 0; i < Users.length; i++) {
+        var User = Users[i];
+        if (User.username.toLowerCase() == username.toLowerCase()) {
+            // User found
+            if (User.password == password) {
+                // Match!
+                return callback(null, User);
+            } else {
+                return callback(null, false, { message: 'Invalid password' });
+            }
+        }
+    }
+    return callback(null, false, { message: 'Invalid username' });
+}));
+
+passport.serializeUser(function (user, callback) {
+    callback(null, user.id);
+});
+
+passport.deserializeUser(function (id, callback) {
+    for (var i = 0; i < Users.length; i++) {
+        var User = Users[i];
+        if (User.id == id)
+            callback(null, User);
+    }
+    callback(new Error('User ' + id + ' does not exist.'));
+});
+
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(flash());
 
 
 //////////////////////////////////////////////////////////
@@ -81,6 +131,10 @@ router.get('/', function (req, res) {
    
 });
 
+//////////////////////////////////////////////////////////
+//  API routes
+//////////////////////////////////////////////////////////
+
 router.get('/api/new', function (req, res) {
     var NewGame = app.GameManager.CreateGame();
     res.json({ status: 200, gameid: NewGame.GameID });
@@ -92,10 +146,67 @@ router.get("/game/:id", function (req, res) {
 });
 
 router.get('/api/cards', function (req, res) {
+    var files = fs.readdirSync(config.DeckPath);
     
-    var data = require('../public/js/cards.json');
-    
-    res.json(data);
+    var CardSets = {};
+
+    for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        var fullpath = path.resolve(path.join(config.DeckPath, file));
+        var stat = fs.statSync(fullpath);
+        if (stat.isFile()) {
+            var CardFile = require(fullpath);
+            for (var j = 0; j < CardFile.length; j++) {
+                var Card = CardFile[j];
+                if (!CardSets.hasOwnProperty(Card.expansion))
+                    CardSets[Card.expansion] = [];
+
+                CardSets[Card.expansion].push(Card);
+            }
+        }
+    }
+
+    res.json({ status: 200, cards: CardSets });
+});
+
+router.get('/api/games', function (req, res) {
+    var GameJSON = {};
+    for (var GameID in app.GameManager.Games) {
+        var Game = app.GameManager.Games[GameID];
+        
+        var GameRep = {
+            GameID: GameID,
+            LastActivity: Game.LastActivity,
+            IdleTime: ((new Date() - Game.LastActivity)/1000),
+            Players: []
+        };
+        
+        var players = Game.GetPlayers();
+        for (var PlayerID in players) {
+            var Player = players[PlayerID];
+            var PlayerRep = {
+                PlayerID: PlayerID,
+                Connected: Player.Socket.connected
+            };
+
+            GameRep.Players.push(PlayerRep);
+        }
+
+        GameJSON[GameID] = GameRep;
+    }
+    res.json({ status: 200, games: GameJSON });
+});
+
+router.get('/api/game/:id/delete', function (req, res) {
+    var GameID = req.params.id;
+    var Game = app.GameManager.GetGame(GameID);
+    if (Game != null) {
+        Game.Expire();
+        res.json({ status: 200, message: 'ok' });
+    } else {
+        res.json({ status: 500, message: 'Invalid game ID' });
+    }
+
 });
 
 router.get('/api/answers/:id', function (req, res) {
@@ -120,6 +231,45 @@ router.get('/api/exists/:id', function (req, res) {
 
 });
 
+//////////////////////////////////////////////////////////
+//  Backend routes
+//////////////////////////////////////////////////////////
+
+router.post('/admin/login',
+    passport.authenticate('local', {
+    failureFlash: true
+}),
+     /**/
+    function (req, res) {
+    if (req.isAuthenticated()) {
+        res.render('Backend/index', { title: 'Cards Against Continuity' , user: req.user});
+    } else {
+        res.render('Backend/login', { title: 'Cards Against Continuity', message: req.flash('error') });
+    }
+});
+
+//router.post('/admin/login', passport.authenticate('local'), function (req, res) {
+//    console.log("Logged in successfully");
+//    res.redirect('/admin');
+//});
+
+router.get('/admin/login', function (req, res) {
+    //res.render('game', { title: 'Cards Against Continuity', GameID: req.params.id });
+    
+    var message = null;
+    if (req.flash('error'))
+        message = req.flash('error');
+    res.render('Backend/login', { title: 'Cards Against Continuity', message: message });
+});
+
+router.get('/admin', function (req, res) {
+    //if (req.isAuthenticated()) {
+        res.render('Backend/index', { title: 'Cards Against Continuity' , user: Users[0]});
+    //} else {
+    //    res.render('Backend/login', { title: 'Cards Against Continuity' });
+    //}
+});
+
 app.use(router);
 
 //////////////////////////////////////////////////////////
@@ -135,7 +285,7 @@ app.use(function (req, res, next) {
 
 // development error handler
 // will print stacktrace
-if (app.get('env') === 'development') {
+//if (app.get('env') === 'development') {
     app.locals.pretty = true;
     app.use(function (err, req, res, next) {
         res.status(err.status || 500);
@@ -144,17 +294,17 @@ if (app.get('env') === 'development') {
             error: err
         });
     });
-}
+//}
 
 // production error handler
 // no stacktraces leaked to user
-app.use(function (err, req, res, next) {
-    res.status(err.status || 500);
-    res.render('error', {
-        message: err.message,
-        error: {}
-    });
-});
+//app.use(function (err, req, res, next) {
+//    res.status(err.status || 500);
+//    res.render('error', {
+//        message: err.message,
+//        error: {}
+//    });
+//});
 
 
 

@@ -1,0 +1,5 @@
+﻿h4 Card Sets
+div(data-bind='foreach: CardSets')
+    div
+        span(data-bind='text: Name')
+        span.pull-right(data-bind='text: Cards().length')

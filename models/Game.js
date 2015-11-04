@@ -24,6 +24,9 @@ function Game(Manager) {
     }
     
     self.Expire = function () {
+        if (GameManager.Games.hasOwnProperty(self.GameID)) {
+            delete GameManager.Games[self.GameID];
+        }
         self.OnGameExpired.dispatch();
     }
 
