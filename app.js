@@ -56,9 +56,88 @@ var SessionMiddleware = session({
 app.SessionStore = SessionStore;
 app.use(SessionMiddleware);
 
+console.log("[" + "Session".green + "] Removing old sessions ...");
+
+(function () {
+    try { var files = fs.readdirSync(__dirname + '/sessions'); }
+    catch (e) { return; }
+    if (files.length > 0) {
+        for (var i = 0; i < files.length; i++) {
+            var filePath = __dirname + '/sessions/' + files[i];
+            if (fs.statSync(filePath).isFile())
+                fs.unlinkSync(filePath);
+        }
+    }
+})();
+
 //////////////////////////////////////////////////////////
 //  Authentication
 //////////////////////////////////////////////////////////
+
+var Users = require('./models/Users.json');
+/*
+ * Authenticate
+ * @param {string} username
+ * @param {string} password
+ * @return If successful, the ID of the user authenticated.  Otherwise, returns false.
+ */
+function Authenticate(req, res) {
+    var username = req.body.Username;
+    var password = req.body.Password;
+
+    console.log("[" + "Auth".green + "] Attempting to authenticate " + username + " ...");
+    for (var i = 0; i < Users.length; i++) {
+        var User = Users[i];
+        if (User.username.toLowerCase() == username.toLowerCase()) {
+            if (User.password == password) {
+                console.log("[" + "Auth".green + "] Success");
+                req.session.UserID = User.id;
+                req.session.save();
+                return true;
+            } else {
+                console.log("[" + "Auth".red + "] Failure.  Invalid password.");
+                return false;
+            }
+        }
+    }
+    console.log("[" + "Auth".red + "] Failure.  Invalid username.");
+    return false;
+}
+
+function IsAuthenticated(req) {
+    console.log("IsAuthenticated");
+    console.log("   UserID: " + req.session.UserID);
+    if (req.session.UserID != undefined) {
+        var User = DeserializeUser(req.session.UserID);
+        console.log("   Deserialized: " + typeof (User));
+        return (User != null);
+    }
+    return false;
+}
+
+function SerializeUser(user) {
+    return user.id;
+}
+
+function DeserializeUser(id) {
+    for (var i = 0; i < Users.length; i++) {
+        var User = Users[i];
+        if (User.id == id)
+            return User;
+    }
+    return null;
+}
+
+/*
+
+function IsLoggedIn(req, res, next) {
+    if (req.isAuthenticated())
+        next();
+    else
+        res.redirect('/admin/login');
+}
+
+
 var passport = require('passport');
 var LocalStrategy = require('passport-local').Strategy;
 var Users = require('./models/Users.json');
@@ -98,9 +177,8 @@ passport.deserializeUser(function (id, callback) {
 
 app.use(passport.initialize());
 app.use(passport.session());
+/**/
 app.use(flash());
-
-
 //////////////////////////////////////////////////////////
 //  Maintenance cron
 //////////////////////////////////////////////////////////
@@ -149,7 +227,7 @@ router.get('/api/cards', function (req, res) {
     var files = fs.readdirSync(config.DeckPath);
     
     var CardSets = {};
-
+    
     for (var i = 0; i < files.length; i++) {
         var file = files[i];
         var fullpath = path.resolve(path.join(config.DeckPath, file));
@@ -160,12 +238,12 @@ router.get('/api/cards', function (req, res) {
                 var Card = CardFile[j];
                 if (!CardSets.hasOwnProperty(Card.expansion))
                     CardSets[Card.expansion] = [];
-
+                
                 CardSets[Card.expansion].push(Card);
             }
         }
     }
-
+    
     res.json({ status: 200, cards: CardSets });
 });
 
@@ -177,7 +255,7 @@ router.get('/api/games', function (req, res) {
         var GameRep = {
             GameID: GameID,
             LastActivity: Game.LastActivity,
-            IdleTime: ((new Date() - Game.LastActivity)/1000),
+            IdleTime: ((new Date() - Game.LastActivity) / 1000),
             Players: []
         };
         
@@ -188,10 +266,10 @@ router.get('/api/games', function (req, res) {
                 PlayerID: PlayerID,
                 Connected: Player.Socket.connected
             };
-
+            
             GameRep.Players.push(PlayerRep);
         }
-
+        
         GameJSON[GameID] = GameRep;
     }
     res.json({ status: 200, games: GameJSON });
@@ -234,17 +312,28 @@ router.get('/api/exists/:id', function (req, res) {
 //////////////////////////////////////////////////////////
 //  Backend routes
 //////////////////////////////////////////////////////////
-
+/*
 router.post('/admin/login',
     passport.authenticate('local', {
+    successRedirect: '/admin',
+    failureRedirect: '/admin/login',
     failureFlash: true
 }),
-     /**/
     function (req, res) {
-    if (req.isAuthenticated()) {
-        res.render('Backend/index', { title: 'Cards Against Continuity' , user: req.user});
+    if (!req.isAuthenticated()) {
+        var message = null;
+        if (req.flash('error'))
+            message = req.flash('error');
+        res.render('Backend/login', { title: 'Cards Against Continuity', message: error });
+    }
+});
+/**/
+router.post('/admin/login', function (req, res) {
+    if (Authenticate(req, res)) {
+        res.redirect('/admin');
     } else {
-        res.render('Backend/login', { title: 'Cards Against Continuity', message: req.flash('error') });
+        req.flash('error', 'Invalid username or password.');
+        res.redirect('/admin/login');
     }
 });
 
@@ -258,16 +347,19 @@ router.get('/admin/login', function (req, res) {
     
     var message = null;
     if (req.flash('error'))
-        message = req.flash('error');
-    res.render('Backend/login', { title: 'Cards Against Continuity', message: message });
+        res.render('Backend/login', { title: 'Cards Against Continuity', message: req.flash('error') });
+    else
+        res.render('Backend/login', { title: 'Cards Against Continuity' });
+
 });
 
 router.get('/admin', function (req, res) {
-    if (req.isAuthenticated()) {
-        res.render('Backend/index', { title: 'Cards Against Continuity' , user: Users[0]});
-    } else {
-        res.render('Backend/login', { title: 'Cards Against Continuity' });
-    }
+    var auth = IsAuthenticated(req);
+    console.log("[" + "Auth".green + "] Checking authentication: " + auth);
+    if (IsAuthenticated(req))
+        res.render('Backend/index', { title: 'Cards Against Continuity' , user: Users[req.session.UserID] });
+    else
+        res.redirect('/admin/login');
 });
 
 app.use(router);
@@ -286,14 +378,14 @@ app.use(function (req, res, next) {
 // development error handler
 // will print stacktrace
 //if (app.get('env') === 'development') {
-    app.locals.pretty = true;
-    app.use(function (err, req, res, next) {
-        res.status(err.status || 500);
-        res.render('error', {
-            message: err.message,
-            error: err
-        });
+app.locals.pretty = true;
+app.use(function (err, req, res, next) {
+    res.status(err.status || 500);
+    res.render('error', {
+        message: err.message,
+        error: err
     });
+});
 //}
 
 // production error handler

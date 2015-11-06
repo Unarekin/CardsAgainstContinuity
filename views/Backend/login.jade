@@ -2,10 +2,10 @@
 block content
     form.LoginForm(method="POST", action="/admin/login")
         h2 Please sign in
-        if message
+        if 'message' in this
             div.LoginError.text-danger
                 span.glyphicon.glyphicon-warning-sign
-                |&nbsp;&nbsp;#{message}
+                |&nbsp;&nbsp;Error: '#{message}'
         label.sr-only(for="Username") Username
         input#Username.form-control(type="text", placeholder="Username", required, autofocus, name='Username')
         label.sr-only(for="Password") Password

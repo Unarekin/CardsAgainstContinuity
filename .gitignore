@@ -34,3 +34,4 @@ build/Release
 node_modules
 .ntvs_analysis.dat
 models/Users.json
+Cards.xlsx
