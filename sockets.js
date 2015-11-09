@@ -437,7 +437,61 @@ var SocketRoutes = function (app) {
             if (callback)
                 callback(ResponseData);
         });
+        
+        
+        socket.on('geolocation', function (data, callback) {
+            //console.log("[" + "IO".green + "] Geolocation event:");
+            //console.log(data.Latitude + "," + data.Longitude);
+            var ResponseData = {
+                Status: 'Error',
+                Message: 'Unknown event type'
+            }
+            
+            if (data.EventType == 'registration') {
+                app.UserLocations.RegisterUser(data.DisplayName, socket, data.Latitude, data.Longitude);
+                ResponseData.Status = 'ok';
+                ResponseData.Message = '';
+                callback(ResponseData);
+            }
+            
+            if (data.EventType == 'invitation') {
+                var InviteData = {
+                    EventType: 'invitation',
+                    GameID: data.GameID
+                };
+                for (var i = 0; i < data.Users.length; i++) {
+                    var UserID = data.Users[i];
+                    var User = app.UserLocations.GetUser(UserID);
+                    if (User != null) {
+                        User.Socket.emit('geolocation', InviteData);
+                    }
+                }
+                
+                ResponseData.Status = 'ok';
+                ResponseData.Message = '';
+                callback(ResponseData);
+            }
+            
+            if (data.EventType == 'request') {
+                var Users = app.UserLocations.FindUsersNear(data.Latitude, data.Longitude, 10);
+                ResponseData.Status = 'ok';
+                ResponseData.Message = '';
+                //ResponseData.Users = Users;
+                ResponseData.Users = [];
+                for (var i = 0; i < Users.length; i++) {
+                    var User = Users[i];
+                    var UserData = {
+                        ID: User.UserID,
+                        Name: User.DisplayName,
+                        Distance: 0
+                    };
 
+                    ResponseData.Users.push(UserData);
+                }
+                callback(ResponseData);
+            }
+
+        });
 
     });
 }

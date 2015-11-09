@@ -84,7 +84,7 @@ var Users = require('./models/Users.json');
 function Authenticate(req, res) {
     var username = req.body.Username;
     var password = req.body.Password;
-
+    
     console.log("[" + "Auth".green + "] Attempting to authenticate " + username + " ...");
     for (var i = 0; i < Users.length; i++) {
         var User = Users[i];
@@ -105,11 +105,8 @@ function Authenticate(req, res) {
 }
 
 function IsAuthenticated(req) {
-    console.log("IsAuthenticated");
-    console.log("   UserID: " + req.session.UserID);
     if (req.session.UserID != undefined) {
         var User = DeserializeUser(req.session.UserID);
-        console.log("   Deserialized: " + typeof (User));
         return (User != null);
     }
     return false;
@@ -128,56 +125,7 @@ function DeserializeUser(id) {
     return null;
 }
 
-/*
 
-function IsLoggedIn(req, res, next) {
-    if (req.isAuthenticated())
-        next();
-    else
-        res.redirect('/admin/login');
-}
-
-
-var passport = require('passport');
-var LocalStrategy = require('passport-local').Strategy;
-var Users = require('./models/Users.json');
-passport.use(new LocalStrategy({
-    usernameField: 'Username',
-    passwordField: 'Password'
-}, function (username, password, callback) {
-    //console.log(arguments);
-    //console.log("Attempting to authenticate " + username + " ...");
-    for (var i = 0; i < Users.length; i++) {
-        var User = Users[i];
-        if (User.username.toLowerCase() == username.toLowerCase()) {
-            // User found
-            if (User.password == password) {
-                // Match!
-                return callback(null, User);
-            } else {
-                return callback(null, false, { message: 'Invalid password' });
-            }
-        }
-    }
-    return callback(null, false, { message: 'Invalid username' });
-}));
-
-passport.serializeUser(function (user, callback) {
-    callback(null, user.id);
-});
-
-passport.deserializeUser(function (id, callback) {
-    for (var i = 0; i < Users.length; i++) {
-        var User = Users[i];
-        if (User.id == id)
-            callback(null, User);
-    }
-    callback(new Error('User ' + id + ' does not exist.'));
-});
-
-app.use(passport.initialize());
-app.use(passport.session());
-/**/
 app.use(flash());
 //////////////////////////////////////////////////////////
 //  Maintenance cron
@@ -275,6 +223,43 @@ router.get('/api/games', function (req, res) {
     res.json({ status: 200, games: GameJSON });
 });
 
+router.get('/api/game/:id', function (req, res) {
+    var GameID = req.params.id;
+    var Game = app.GameManager.GetGame(GameID);
+    if (Game != null) {
+        var GameJSON = {
+            GameID: Game.GameID,
+            CurrentQuestion: (Game.CurrentQuestion != null ? Game.CurrentQuestion.text : ''),
+            SubmittedAnswers: 0,
+            LastActivity: Game.LastActivity,
+            Players: []
+        };
+        
+        for (var PlayerID in Game.SubmittedAnswers)
+            GameJSON.SubmittedAnswers++;
+        
+        //var Players = Game.GetPlayers();
+        var Players = app.GameManager.GetPlayers(GameID);
+        for (var PlayerID in Players) {
+            var Player = Players[PlayerID];
+            var PlayerData = {
+                PlayerID: Player.ID,
+                Connected: Player.Socket.connected,
+                Administrator: Player.CardAdministrator,
+                Cards: Player.Answers.length,
+                Score: Player.Score,
+                AnswersSubmitted: false
+            }
+            console.log(PlayerData);
+            GameJSON.Players.push(PlayerData);
+        }
+        
+        res.json({ status: 200, game: GameJSON });
+    } else {
+        res.json({ status: 500, message: 'Invalid game ID' });
+    }
+});
+
 router.get('/api/game/:id/delete', function (req, res) {
     var GameID = req.params.id;
     var Game = app.GameManager.GetGame(GameID);
@@ -362,6 +347,19 @@ router.get('/admin', function (req, res) {
         res.redirect('/admin/login');
 });
 
+router.get('/admin/game/:id', function (req, res) {
+    if (IsAuthenticated(req)) {
+        var GameID = req.params.id;
+        if (app.GameManager.GameExists(GameID)) {
+            res.render('Backend/game', { title: 'Cards Against Continuity', user: Users[req.session.UserID], GameID: GameID })
+        } else {
+            res.render('Backend/game', { title: 'Cards Against Continuity', user: Users[req.session.UserID] });
+        }
+    } else {
+        res.redirect('/admin/login');
+    }
+});
+
 app.use(router);
 
 //////////////////////////////////////////////////////////
@@ -399,7 +397,12 @@ app.use(function (err, req, res, next) {
 //});
 
 
-
+//////////////////////////////////////////////////////////
+//  Nearby users registry
+//////////////////////////////////////////////////////////
+//app.UserLocations = require('./userlocation');
+var UserLocationRepository = require('./userlocation');
+app.UserLocations = new UserLocationRepository();
 
 // Sockets
 var socket_io = require("socket.io");

@@ -1,0 +1,23 @@
+﻿extends ../layout
+block content
+    script(type="text/javascript").
+        GameID = "#{GameID}";
+    script(src='/js/backend/GameViewModel.js')
+    h4 Welcome, #{user.username}!
+
+    .container
+        p Game #[span(data-bind='text: GameID')]
+        p Current Question: #[span(data-bind='text: CurrentQuestion')]
+        p Answers Submitted: #[span(data-bind='text: SubmittedAnswers')]
+        p Players: #[span(data-bind='text: Players().length')]
+            div(data-bind='foreach: Players')
+                .AdminPlayerCard
+                    div(data-bind='text: PlayerID')
+                    div(data-bind='visible: !Connected()')
+                        strong Disconnected
+                    div(data-bind='visible: Administrator')
+                        strong Card Administrator
+                    div Hand size: #[span(data-bind='text: Cards')]
+                    div(data-bind='visible: AnswersSubmitted')
+                        | User has submitted answers
+                    div Score: #[span(data-bind='text: Score')]

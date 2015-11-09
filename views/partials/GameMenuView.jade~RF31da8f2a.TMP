@@ -3,14 +3,8 @@
         button.btn.btn-default.dropdown-toggle.btn-small(type="button", data-toggle="dropdown", aria-haspopup="true", aria-expanded="false")
             span.glyphicon.glyphicon-cog
         ul.dropdown-menu.dropdown-menu-right
-            li.dropdown-submenu
-                a(href='#', data-bind='click: InvitePlayers')
-                    span.glyphicon.glyphicon-envelope
-                    |  Invite Players
-                ul.dropdown-menu
-                    li Test
-                    li Test
-                    li Test
+            li: span.glyphicon.glyphicon-envelope
+                |  Invite Players
             li.divider(role="separator")
             li: a(href='#', data-bind="click: RefreshHand")
                 span.glyphicon.glyphicon-refresh

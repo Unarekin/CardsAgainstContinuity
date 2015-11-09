@@ -283,52 +283,17 @@ var GameClientViewModel = function () {
                 done: {
                     label: 'Done',
                     className: 'btn-primary',
+                    callback: function () {
+
+                    }
                 }
             }
         });
         $("#NearbyPlayersList").html("<img src='/images/loading.gif' /> Checking for nearby players ...");
         if (navigator.geolocation)
             navigator.geolocation.getCurrentPosition(function (location) {
-                $("#NearbyPlayersList").html("<img src='/images/loading.gif' /> Location determined, querying for nearby players ...");
-                var Data = {
-                    EventType: 'request',
-                    Latitude: location.coords.latitude,
-                    Longitude: location.coords.longitude
-                };
-                console.log("Data:", Data);
-                self.Socket.emit('geolocation', Data, function (response) {
-                    console.log("Response:", response);
-                    if (response.Status == 'ok') {
-                        var Contents = "The following players were located:<ul>";
-                        for (var i = 0; i < response.Users.length; i++) {
-                            var User = response.Users[i];
-                            Contents += "<li>" + User.Name + " <button class='btn btn-primary btn-xs InviteUserButton' data-userid='" + User.ID + "' type='button'>Invite</button></li>";
-                        }
-                        Contents += "</ul>";
-                        $("#NearbyPlayersList").html(Contents);
+                console.log("Position:", location);
 
-                        $(".InviteUserButton").click(function (event) {
-                            var button = event.currentTarget;
-                            var UserID = $(button).data('userid');
-                            
-                            var InviteData = {
-                                EventType: 'invitation',
-                                GameID: GameID,
-                                Users: [UserID]
-                            }
-
-                            self.Socket.emit('geolocation', InviteData, function (response) {
-                                if (response.Status == 'ok') {
-                                    $(button).attr('disabled', 'disabled');
-                                    $(button).html('Sent');
-                                }
-                            });
-                        });
-                    } else {
-                        $("#NearbyPlayersList").class("danger-text");
-                        $("#NearbyPlayersList").html("<span class='glyphicon glyphicon-warning-sign'></span> An error has occurred:<br />" + response.Message);
-                    }
-                });
             }, function () {
                 console.log(arguments);
                 $("#NearbyPlayersList").html("Unable to determine nearby players.");

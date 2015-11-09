@@ -4,7 +4,7 @@ block content
         .row
             .col-md-6.col-md-offset-3
                 h1.text-center Cards Against Continuity
-                p To get started, either create a new game or enter a game key if you have been provided one by your friends!
+                p You have several options to get started playing a Cards against Continuity game.
                 .text-center
                     button.btn.btn-primary.btn-lg(role='button')#NewGameButton New Game
                 if GameID
@@ -22,3 +22,17 @@ block content
                             label.sr-only(for='GameKey') Enter game key
                             input#GameKey(type='text', placeholder='Enter game key').form-control
                         button#JoinGameButton.btn.btn-default(type='button') Join Game
+                br
+                br
+                p Or, if you would like to allow nearby players to locate and invite you directly, please enter a display name, and click the Allow Location button.
+                .AllowLocationUnsupported.text-danger
+                    span.glyphicon.glyphicon-warning-sign
+                    |  Your browser does not appear to support geolocation.
+                    br
+                    br
+                .text-center
+                    form(role='form').form-inline
+                        .form-group
+                            label.sr-only(for='DisplayName') Enter display name
+                            input#DisplayName(type='text', placeholder='Enter display name').form-control
+                        button.btn.btn-default(type='button')#AllowLocationButton Allow Location

@@ -1,6 +1,7 @@
 ﻿h4 Active Games: #[span(data-bind='text: ActiveGames().length')]
 div(data-bind='foreach: ActiveGames, beforeRemove: HideListElement, afterAdd: ShowListElement')
-    h4 Game #[span(data-bind='text: GameID')]
+    a(data-bind="attr: {href: '/admin/game/' + GameID()}")
+        h4 Game #[span(data-bind='text: GameID')]
     div
         span Players:
         span.pull-right(data-bind='text: Players().length')

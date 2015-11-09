@@ -3,6 +3,7 @@
     $("#NewGameButton").click(NewGameButton);
     $("#JoinGameButton").click(JoinGameButton);
     $("#RejoinGameButton").click(RejoinGameButton);
+    $("#AllowLocationButton").click(AllowLocationButton);
 });
 function NewGameButton() {
     $.getJSON("/api/new", function (data) {
@@ -42,6 +43,59 @@ function RejoinGameButton() {
             });
         }
     });
+}
+
+function AllowLocationButton() {
+    var DisplayName = $("#DisplayName").val();
+    if (DisplayName == '') {
+        bootbox.alert("You must enter a display name.");
+    } else {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function (location) {
+                var socket = io();
+                
+                window.socket = socket;
+                var Data = {
+                    EventType: 'registration',
+                    DisplayName: DisplayName,
+                    Latitude: location.coords.latitude,
+                    Longitude: location.coords.longitude
+                };
+                
+                socket.emit('geolocation', Data, function (response) {
+                    console.log("Geolocation response:");
+                    console.log(response);
+                });
+                
+                socket.on('geolocation', function (data) {
+                    if (data.EventType == 'invitation') {
+                        var GameID = data.GameID;
+                        var Message = "You have been invited to game " + GameID + "!<br />";
+                        bootbox.dialog({
+                            message: Message,
+                            title: 'Game Invitation',
+                            buttons: {
+                                join: {
+                                    label: 'Join',
+                                    className: 'btn-primary',
+                                    callback: function () {
+                                        window.location.href = '/game/' + GameID;
+                                    }
+                                },
+                                dismiss: {
+                                    label: 'Dismiss',
+                                    className: 'btn-danger'
+                                }
+                            }    
+                        })
+                    }
+                });
+            });
+        } else {
+            $("#AllowLocationButton").attr('disabled', 'disabled');
+            $(".AllowLocationUnsupported").show();
+        }
+    }
 }
 
 // Set up drag and drop binding handlers for knockout.
