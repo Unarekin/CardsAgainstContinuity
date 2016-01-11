@@ -21,6 +21,8 @@ function WireGameSignals(Socket, Game) {
         if (Game.HasCardAdministrator()) {
             data.HasCardAdministrator = true;
             var Question = Game.CurrentQuestion;
+            console.log("Current question:");
+            console.log(Question);
             data.AnswerCount = Question.numAnswers;
         }
         Socket.broadcast.to(Game.GameID).emit('administration', data);
@@ -198,7 +200,9 @@ var SocketRoutes = function (app) {
                     ResponseData.Granted = true;
                     
                     // Draw a question.
+                    console.log("[" + "IO".green + "] Drawing question:");
                     var Question = GameConnection.Game.DrawQuestion();
+                    console.log(Question);
                     GameConnection.Game.CurrentQuestion = Question;
                     ResponseData.Question = Question;
                     ResponseData.Status = "ok";
