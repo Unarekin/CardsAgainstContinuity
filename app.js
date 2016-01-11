@@ -360,6 +360,14 @@ router.get('/admin/game/:id', function (req, res) {
     }
 });
 
+router.get('/admin/cards', function (req, res) {
+    if (IsAuthenticated(req)) {
+        res.render('Backend/cardeditor.jade', { title: 'Cards Against Continuity', user: Users[req.session.UserID] });
+    } else {
+        res.redirect('/admin/login');
+    }
+});
+
 app.use(router);
 
 //////////////////////////////////////////////////////////

@@ -35,3 +35,5 @@ node_modules
 .ntvs_analysis.dat
 models/Users.json
 Cards.xlsx
+Cards.xlsm
+cards-against-continuity-publickey.txt

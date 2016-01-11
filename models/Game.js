@@ -220,7 +220,7 @@ function Game(Manager) {
 
     // Construction
     self.Cards = new Deck();
-    self.Cards.LoadCards('./models/cards/debug.json');
+    self.Cards.LoadCards('./models/cards/Continuity.json');
     self.Cards.Shuffle();
 };
 

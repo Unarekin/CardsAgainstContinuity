@@ -473,7 +473,7 @@ var SocketRoutes = function (app) {
             }
             
             if (data.EventType == 'request') {
-                var Users = app.UserLocations.FindUsersNear(data.Latitude, data.Longitude, 10);
+                var Users = app.UserLocations.FindUsersNear(data.Latitude, data.Longitude, 5000);
                 ResponseData.Status = 'ok';
                 ResponseData.Message = '';
                 //ResponseData.Users = Users;

@@ -1,5 +1,5 @@
 ﻿/*
- * The BackEndViewModel is responsible for handling tehdisplay
+ * The BackEndViewModel is responsible for handling the display
  * of our administrative back-end view.
  */
 
