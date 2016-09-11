@@ -1,7 +1,0 @@
-﻿.AnswerAreaContainer(data-bind="fadeVisible: ShowSelectAnswerView")
-    p Please select #[span(data-bind="text: AnswersToSelect")] answers:
-    .PlaceholderList(data-bind="foreach: UnsubmittedAnswers")
-        .Card(data-bind="html: Text")
-    .AnswerSubmissionButtons
-        button.btn.btn-danger.btn-large(type="button", role="button", data-bind="click: ResetUnsubmittedAnswers, enable: CanResetAnswer") Reset Answer(s)
-        button.btn.btn-primary.btn-large(type="button", role="button", data-bind="click: SubmitUnsubmittedAnswers, enable: CanSubmitAnswer") Submit Answer(s)

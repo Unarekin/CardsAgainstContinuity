@@ -1,0 +1,3 @@
+div.card(ng-class="{question: type==='q', answer: type==='a'}", layout="column")
+  div(flex, ng-bind-html="card.text")
+  md-checkbox(ng-model="selected", ng-disabled="isDisabled()", ng-show="showSelection") Choose

@@ -1,0 +1,62 @@
+div(layout="row", flex, layout-fill)
+  md-sidenav.md-sidenav-left(md-component-id="left", md-whiteframe="4", md-swipe-left="closeSideNav()", md-is-locked-open="lockSideNav()")
+    div(layout="column", flex, layout-fill)
+      div.sidenav-header(flex="none", layout="column", ng-class="{small: smallSideNav()}")
+        div.cityscape(flex, layout="column")
+          div(flex, layout="column", style="z-index:5")
+            .logo.small(flex, ng-hide="smallSideNav()")
+            h2.title(flex="none", layout="row", layout-align="center center") Cards Against Continuity
+          rain-overlay(style="width:100%;height:100%;position:absolute;")
+      div(flex, layout="column", style="background:#333")
+        md-tabs.md-primary(flex, md-center-tabs="true")
+          md-tab(label="Players")
+            md-tab-content.player-list(layout-padding)
+              div(style="text-align:center") Players
+              md-divider
+              md-content
+                div(ng-repeat="Player in Game.players", layout="column")
+                  div(layout="row", ng-class="{'disconnected': !Player.connected}")
+                    div(flex="10", ng-show="Player.ready")
+                      md-icon(style="color:green") check
+                    div(flex="10", ng-show="!Player.ready")
+                    div(flex, ng-class="{'administrator': Player.administrator}") {{Player.name}}
+                    span
+                      | {{Player.points}} point
+                      span(ng-show="Player.points !== 1") s
+                  md-divider(ng-if="!$last")
+          md-tab(label="Options")
+            md-tab-content(layout-margin, layout="column")
+              md-button.md-raised.md-primary(ng-show="!Game.administrator", ng-click="claimAdministrator()") Become Card Administrator
+              md-button.md-raised.md-warn(ng-show="Game.administrator", ng-click="resetAdministrator()") Reset Administrator
+              md-button.md-raised.md-primary(ng-click="changeName($event)") Change Name
+              div(flex)
+              md-button.md-raised.md-warn(ng-click="leaveGame($event)") Leave Game
+
+        md-button.md-primary.md-raised(ng-click="closeSideNav()", ng-hide="lockSideNav()") Close
+  .playingfield(flex, layout-fill, layout="column")
+    div(flex, md-swipe-right="openSideNav()", layout="column")
+      div(ng-show="PlayerAnswers", flex, layout="column")
+        div.question-header(ng-hide="$mdMedia('gt-md')", layout-padding, ng-bind-html="Question.text")
+        div(flex, layout="row")
+          div(layout="column", layout-align="center center", ng-show="$mdMedia('gt-md')")
+            card(card="Question", type="q")
+          md-content(flex, style="background-color:transparent", layout="column")
+            div(layout="row", ng-repeat="(id, Cards) in PlayerAnswers", ng-show="Cards.length > 0", ng-click="selectWinner(id)", ng-class="{selected: selectedWinner === id}", layout-wrap, layout-align="center center")
+              card(ng-repeat="Card in Cards", card="Card", type="a")
+              div(flex)
+              div(layout="column", layout-align="center center", flex="none")
+                md-button.md-raised.md-primary(ng-show="selectedWinner === id", ng-click="confirmWinner(id)") Confirm
+      div(ng-show="!Game.administrator", flex, layout="column", layout-align="center center")
+        md-button.md-raised.md-primary(ng-click="claimAdministrator()") Become Card Administrator
+      div(ng-show="Player.administrator && !PlayerAnswers", flex, layout="column", layout-align="center center")
+        card(card="Question", type="q")
+        md-button.md-raised.md-primary(ng-click="viewAnswers()", ng-disabled="readyPlayers().length === 0") View Answers ({{readyPlayers().length}}/{{selectingPlayers().length}})
+      div(ng-show="Game.administrator && !Player.administrator", flex, layout="row", layout-align="center center")
+        div(ng-repeat="i in getNumber(Game.expectedanswers) track by $index")
+          card(ng-show="SelectedAnswers[$index]", card="SelectedAnswers[$index]", type="a")
+          div.card.empty(ng-show="SelectedAnswers.length <= $index", layout="column", layout-align="center center") Select an Answer
+      div(ng-show="Game.administrator && !Player.administrator", layout="column", layout-align="center center", layout-margin)
+        div(style="color:white;") {{SelectedAnswers.length}} / {{Game.expectedanswers}} answers selected.
+        md-checkbox(ng-model="Player.ready", ng-disabled="SelectedAnswers.length !== Game.expectedanswers", style="color:white;") Ready
+    md-content(layout="row", flex="none", style="background-color: transparent", ng-hide="Player.administrator")
+      card(ng-repeat="Card in Hand", card="Card", type="a", on-select="selectCard(card)", on-unselect="unselectCard(card)", can-select="canSelectAnswers(card)", show-selection="Game.administrator", is-selected="isCardSelected(card)")

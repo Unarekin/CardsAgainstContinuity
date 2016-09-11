@@ -1,0 +1,59 @@
+div(layout="column", ng-show="!$root.isLandscape", flex, layout-fill)
+  div.cityscape(flex, layout="column")
+    div(flex, layout="column", style="z-index:5")
+      .logo(flex)
+      h2.title(flex="none", layout="row", layout-align="center center") Cards Against Continuity
+    rain-overlay(style="width:100%;height:100%;position:absolute;")
+  div(flex)
+    md-tabs.md-primary(md-center-tabs, flex, layout="column", layout-fill)
+      md-tab(label="Join", flex, layout="column")
+        md-tab-content(flex, layout-fill, layout="column")
+          md-content(flex, layout="column", layout-fill, ng-controller="JoinGameController")
+            p To join a game, you will need to enter a 6-digit game key.
+            div(flex)
+            div(layout="row", layout-align="center center")
+              md-button.md-primary.md-raised(ng-click="joinGame($event)") Join
+              md-button.md-primary.md-raised(ng-click="rejoinGame()", ng-show="lastGame") Rejoin
+            div(flex)
+      md-tab(label="New", flex, layout="column")
+        md-tab-content(flex, layout-fill, layout="column")
+          md-content(flex, layout="column", layout-fill, ng-controller="NewGameController")
+            p To create a new game, click below.
+            div(flex)
+            div(layout="column", layout-align="center center")
+              md-button.md-primary.md-raised(ng-click="newGame()") Create Game
+            div(flex)
+      md-tab(label="About", flex, layout="column")
+        md-tab-content(flex, layout-fill, layout="column", layout-padding, style="color:white;text-shadow: 1px 1px 1px rgba(0,0,0,0.25)")
+          p Cards Against Continuity is a web app that seeks to provide a means to play a customized version of #[a(href="http://cardsagainsthumanity") Cards Against Humanity] with cards created for the #[a(href="http://www.prepareforplanetfall.com") Planetfall] LARP.
+          p Check us out on #[a(href="https://github.com/Unarekin/CardsAgainstContinuity") GitHub].
+          p &copy; 2016 Samuel Phelps
+div(layout="row", ng-show="$root.isLandscape", flex, layout-fill)
+  div.cityscape(flex, layout="column")
+    div(flex, layout="column", style="z-index:5")
+      .logo(flex)
+      h2.title(flex="none", layout="row", layout-align="center center") Cards Against Continuity
+    rain-overlay(style="width:100%;height:100%;position:absolute;")
+  div(flex)
+    md-tabs.md-primary(md-center-tabs, flex, layout="column", layout-fill)
+      md-tab(label="Join", flex, layout="column")
+        md-tab-content(flex, layout-fill, layout="column")
+          md-content(flex, layout="column", layout-fill, ng-controller="JoinGameController")
+            p To join a game, you will need to enter a 6-digit game key.
+            div(flex)
+            div(layout="row", layout-align="center center")
+              md-button.md-primary.md-raised(ng-click="joinGame($event)") Join
+            div(flex)
+      md-tab(label="New", flex, layout="column")
+        md-tab-content(flex, layout-fill, layout="column")
+          md-content(flex, layout="column", layout-fill, ng-controller="NewGameController")
+            p To create a new game, click below.
+            div(flex)
+            div(layout="column", layout-align="center center")
+              md-button.md-primary.md-raised(ng-click="newGame()") Create Game
+            div(flex)
+      md-tab(label="About", flex, layout="column")
+        md-tab-content(flex, layout-fill, layout="column", layout-padding, style="color:white;text-shadow: 1px 1px 1px rgba(0,0,0,0.25)")
+          p Cards Against Continuity is a web app that seeks to provide a means to play a customized version of #[a(href="http://cardsagainsthumanity") Cards Against Humanity] with cards created for the #[a(href="http://www.prepareforplanetfall.com") Planetfall] LARP.
+          p Check us out on #[a(href="https://github.com/Unarekin/CardsAgainstContinuity") GitHub].
+          p &copy; 2016 Samuel Phelps

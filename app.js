@@ -1,426 +1,536 @@
-﻿var config = require('./config');
-var express = require('express');
-var path = require('path');
-var favicon = require('serve-favicon');
-var logger = require('morgan');
-var cookieParser = require('cookie-parser');
-var session = require('express-session');
-var filestore = require('session-file-store')(session);
+'use strict'
+///////////////////////////////////////////////////////////////////////
+//  Includes
+///////////////////////////////////////////////////////////////////////
+const express       = require('express'),
+      path          = require('path'),
+      favicon       = require('serve-favicon'),
+      logger        = require('morgan'),
+      cookieParser  = require('cookie-parser'),
+      bodyParser    = require('body-parser'),
+      session       = require('express-session'),
+      sharedsession = require('express-socket.io-session'),
+      mongostore    = require('connect-mongo')(session),
+      mongoose      = require('mongoose'),
+      walk          = require('walkdir'),
+      q             = require('q')
+      ;
+var routes = require('./routes/index');
+var users = require('./routes/users');
 
-var fs = require('fs');
-var path = require('path');
-
-var sharedsession = require("express-socket.io-session");
-var flash = require('connect-flash');
-
-var bodyParser = require('body-parser');
-var crontab = require("node-crontab");
-
-var promise = require('promise');
-
-
+///////////////////////////////////////////////////////////////////////
+//  Setup
+///////////////////////////////////////////////////////////////////////
 var app = express();
-
-
-// Set up game DB
-//var GameDB = require('./game');
-var GameManager = require('./models/GameManager');
-app.GameManager = new GameManager();
+app.set('port', 3000);
+mongoose.Promise = require('q').Promise;
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
-
-app.set('env', 'development');
+app.set('view engine', 'pug');
 
 // uncomment after placing your favicon in /public
-app.use(favicon(__dirname + '/public/favicon.ico'));
+//app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(logger('dev'));
-app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(require('stylus').middleware(path.join(__dirname, 'public')));
+app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.schemas = require('./schemas');
 
-//////////////////////////////////////////////////////////
-//  Session
-//////////////////////////////////////////////////////////
-var SessionStore = new filestore({ path: __dirname + '/sessions' });
-var SessionMiddleware = session({
-    store: SessionStore,
-    secret: 'tx3E&o3{yR@*3Nq3Typu%NHmpc1FT5',
-    resave: true,
-    saveUninitialized: true
+app.sessionStore = new mongostore({url: 'mongodb://localhost/cardsagainstcontinuity'});
+app.session = session({
+  key: 'connect.sid',
+  secret: 'tx3E&o3{yR@*3Nq3Typu%NHmpc1FT5',
+  resave: true,
+  saveUninitialized: true,
+  store: app.sessionStore
 });
-app.SessionStore = SessionStore;
-app.use(SessionMiddleware);
+app.use(app.session);
 
-console.log("[" + "Session".green + "] Removing old sessions ...");
+var httpServer = require('http').Server(app);
+app.io = require('socket.io')(httpServer);
+app.io.use(require('socketio-wildcard')());
+app.io.use(sharedsession(app.session));
+app.socketrouter = require('./sockets')(app);
 
-(function () {
-    try { var files = fs.readdirSync(__dirname + '/sessions'); }
-    catch (e) { return; }
-    if (files.length > 0) {
-        for (var i = 0; i < files.length; i++) {
-            var filePath = __dirname + '/sessions/' + files[i];
-            if (fs.statSync(filePath).isFile())
-                fs.unlinkSync(filePath);
-        }
-    }
-})();
-
-//////////////////////////////////////////////////////////
-//  Authentication
-//////////////////////////////////////////////////////////
-
-var Users = require('./models/Users.json');
-/*
- * Authenticate
- * @param {string} username
- * @param {string} password
- * @return If successful, the ID of the user authenticated.  Otherwise, returns false.
- */
-function Authenticate(req, res) {
-    var username = req.body.Username;
-    var password = req.body.Password;
-    
-    console.log("[" + "Auth".green + "] Attempting to authenticate " + username + " ...");
-    for (var i = 0; i < Users.length; i++) {
-        var User = Users[i];
-        if (User.username.toLowerCase() == username.toLowerCase()) {
-            if (User.password == password) {
-                console.log("[" + "Auth".green + "] Success");
-                req.session.UserID = User.id;
-                req.session.save();
-                return true;
-            } else {
-                console.log("[" + "Auth".red + "] Failure.  Invalid password.");
-                return false;
-            }
-        }
-    }
-    console.log("[" + "Auth".red + "] Failure.  Invalid username.");
-    return false;
+// Dev setup
+if (app.get('env') === 'development') {
+  app.locals.pretty = true;
 }
 
-function IsAuthenticated(req) {
-    if (req.session.UserID != undefined) {
-        var User = DeserializeUser(req.session.UserID);
-        return (User != null);
-    }
-    return false;
-}
+///////////////////////////////////////////////////////////////////////
+//  DB
+///////////////////////////////////////////////////////////////////////
+app.db = {
+  getRecords: function(collection, criteria, populate, skip) {
+    var deferred = q.defer();
+    var collObj = null;
+    if (typeof collection === 'object')
+      collObj = collection;
+    else if (typeof collection === 'string')
+      collObj = app.schemas[collection];
 
-function SerializeUser(user) {
-    return user.id;
-}
-
-function DeserializeUser(id) {
-    for (var i = 0; i < Users.length; i++) {
-        var User = Users[i];
-        if (User.id == id)
-            return User;
-    }
-    return null;
-}
-
-
-app.use(flash());
-//////////////////////////////////////////////////////////
-//  Maintenance cron
-//////////////////////////////////////////////////////////
-var ExpirationJobID = crontab.scheduleJob("0 * * * *", function () {
-    console.log("[" + "CRON".green + "] Checking for inactive games ...");
-    app.GameManager.ExpireOldGames(config.GameTTL);
-});
-console.log("[" + "CRON".green + "] Beginning expiration cron with ID " + ExpirationJobID);
-
-
-//////////////////////////////////////////////////////////
-//  Routes
-//////////////////////////////////////////////////////////
-var router = express.Router();
-/* GET home page. */
-router.get('/', function (req, res) {
-    var Game = null;
-    console.log("Player ID:" + req.session.PlayerID);
-    if (req.session.PlayerID)
-        Game = app.GameManager.GetGameForPlayer(req.session.PlayerID);
-    
-    if (Game != null) {
-        console.log("Game ID: " + Game.GameID);
-        res.render('index', { title: 'Cards Against Continuity', GameID: Game.GameID });
+    if (collObj) {
+      var query = collObj.find(criteria);
+      if (populate && typeof populate === 'string')
+        query = query.populate(populate);
+      else if (populate && Array.isArray(populate))
+        query = query.populate(populate.join(' '));
+      if (skip)
+        query = query.skip(skip);
+      query.exec(function(err, data) {
+        if (err)
+          deferred.reject(err);
+        else
+          deferred.resolve(data);
+      })
     } else {
-        res.render('index', { title: 'Cards Against Continuity' });
+      deferred.reject(new Error("Invalid collection: " + collection.toString()));
     }
-   
-});
+    return deferred.promise;
+  },
+  getRecord: function(collection, criteria, populate, skip) {
+    var deferred = q.defer();
+    var collObj = null;
+    if (typeof collection === 'object')
+      collObj = collection;
+    else if (typeof collection === 'string')
+      collObj = app.schemas[collection];
 
-//////////////////////////////////////////////////////////
-//  API routes
-//////////////////////////////////////////////////////////
-
-router.get('/api/new', function (req, res) {
-    var NewGame = app.GameManager.CreateGame();
-    res.json({ status: 200, gameid: NewGame.GameID });
-});
-
-router.get("/game/:id", function (req, res) {
-    //res.send("Game: " + req.params.id);
-    res.render('game', { title: 'Cards Against Continuity', GameID: req.params.id });
-});
-
-router.get('/api/cards', function (req, res) {
-    var files = fs.readdirSync(config.DeckPath);
-    
-    var CardSets = {};
-    
-    for (var i = 0; i < files.length; i++) {
-        var file = files[i];
-        var fullpath = path.resolve(path.join(config.DeckPath, file));
-        var stat = fs.statSync(fullpath);
-        if (stat.isFile()) {
-            var CardFile = require(fullpath);
-            for (var j = 0; j < CardFile.length; j++) {
-                var Card = CardFile[j];
-                if (!CardSets.hasOwnProperty(Card.expansion))
-                    CardSets[Card.expansion] = [];
-                
-                CardSets[Card.expansion].push(Card);
-            }
-        }
-    }
-    
-    res.json({ status: 200, cards: CardSets });
-});
-
-router.get('/api/games', function (req, res) {
-    var GameJSON = {};
-    for (var GameID in app.GameManager.Games) {
-        var Game = app.GameManager.Games[GameID];
-        
-        var GameRep = {
-            GameID: GameID,
-            LastActivity: Game.LastActivity,
-            IdleTime: ((new Date() - Game.LastActivity) / 1000),
-            Players: []
-        };
-        
-        var players = Game.GetPlayers();
-        for (var PlayerID in players) {
-            var Player = players[PlayerID];
-            var PlayerRep = {
-                PlayerID: PlayerID,
-                Connected: Player.Socket.connected
-            };
-            
-            GameRep.Players.push(PlayerRep);
-        }
-        
-        GameJSON[GameID] = GameRep;
-    }
-    res.json({ status: 200, games: GameJSON });
-});
-
-router.get('/api/game/:id', function (req, res) {
-    var GameID = req.params.id;
-    var Game = app.GameManager.GetGame(GameID);
-    if (Game != null) {
-        var GameJSON = {
-            GameID: Game.GameID,
-            CurrentQuestion: (Game.CurrentQuestion != null ? Game.CurrentQuestion.text : ''),
-            SubmittedAnswers: 0,
-            LastActivity: Game.LastActivity,
-            Players: []
-        };
-        
-        for (var PlayerID in Game.SubmittedAnswers)
-            GameJSON.SubmittedAnswers++;
-        
-        //var Players = Game.GetPlayers();
-        var Players = app.GameManager.GetPlayers(GameID);
-        for (var PlayerID in Players) {
-            var Player = Players[PlayerID];
-            var PlayerData = {
-                PlayerID: Player.ID,
-                Connected: Player.Socket.connected,
-                Administrator: Player.CardAdministrator,
-                Cards: Player.Answers.length,
-                Score: Player.Score,
-                AnswersSubmitted: false
-            }
-            console.log(PlayerData);
-            GameJSON.Players.push(PlayerData);
-        }
-        
-        res.json({ status: 200, game: GameJSON });
+    if (collObj) {
+      var query =collObj.findOne(criteria);
+      if (populate && typeof populate === 'string')
+        query = query.populate(populate);
+      else if (populate && Array.isArray(populate))
+        query = query.populate(populate.join(' '));
+      if (skip)
+        query = query.skip(skip);
+      query.exec(function(err, data) {
+        if (err)
+          deferred.reject(err);
+        else
+          deferred.resolve(data);
+      })
     } else {
-        res.json({ status: 500, message: 'Invalid game ID' });
+      deferred.reject(new Error("Invalid collection: " + collection.toString()));
     }
-});
+    return deferred.promise;
+  },
+  saveRecord: function(record) {
+    var deferred = q.defer();
+    record.save(function(err) {
+      if (err)
+        deferred.reject(err);
+      else
+        deferred.resolve(record);
+    });
+    return deferred.promise;
+  },
+  getRecordById: function(collection, id, populate) {
+    var deferred = q.defer();
+    var collObj = null;
+    if (typeof collection === 'object')
+      collObj = collection;
+    else if (typeof collection === 'string')
+      collObj = app.schemas[collection];
 
-router.get('/api/game/:id/delete', function (req, res) {
-    var GameID = req.params.id;
-    var Game = app.GameManager.GetGame(GameID);
-    if (Game != null) {
-        Game.Expire();
-        res.json({ status: 200, message: 'ok' });
+    if (collObj) {
+      var query =collObj.findById(id);
+      if (populate && typeof populate === 'string')
+        query = query.populate(populate);
+      else if (populate && Array.isArray(populate))
+        query = query.populate(populate.join(' '));
+
+      query.exec(function(err, data) {
+        if (err)
+          deferred.reject(err);
+        else
+          deferred.resolve(data);
+      })
     } else {
-        res.json({ status: 500, message: 'Invalid game ID' });
+      deferred.reject(new Error("Invalid collection: " + collection.toString()));
     }
+    return deferred.promise;
+  }
+}
 
-});
-
-router.get('/api/answers/:id', function (req, res) {
-    var GameID = req.params.id;
-    var CurrentGame = app.GameManager.GetGame(GameID);
-    res.json(CurrentGame.CurrentAnswers);
-});
-
-router.get('/api/exists/:id', function (req, res) {
-    var GameID = req.params.id;
-    var Data = {
-        Status: "error",
-        Message: "Invalid game ID."
+///////////////////////////////////////////////////////////////////////
+//  Functions
+///////////////////////////////////////////////////////////////////////
+app.functions = {
+  getAdministrator: function(game_id) {
+    return app.db.getRecord('Player', {_game: game_id, administrator: true});
+  },
+  shallowGame: function(Game) {
+    if (!Game)
+      return null;
+    return {
+      _id: Game._id,
+      lastactivity: new Date(Game.lastactivity),
+      key: Game.key,
+      players: [],
+      administrator: null,
+      expectedanswers: (Game.currentquestion ? Game.currentquestion.answers : 0)
     };
-    
-    if (app.GameManager.GameExists(GameID)) {
-        Data.Status = "ok";
-        Data.Message = "";
-    }
-    
-    res.json(Data);
-
-});
-
-//////////////////////////////////////////////////////////
-//  Backend routes
-//////////////////////////////////////////////////////////
-/*
-router.post('/admin/login',
-    passport.authenticate('local', {
-    successRedirect: '/admin',
-    failureRedirect: '/admin/login',
-    failureFlash: true
-}),
-    function (req, res) {
-    if (!req.isAuthenticated()) {
-        var message = null;
-        if (req.flash('error'))
-            message = req.flash('error');
-        res.render('Backend/login', { title: 'Cards Against Continuity', message: error });
-    }
-});
-/**/
-router.post('/admin/login', function (req, res) {
-    if (Authenticate(req, res)) {
-        res.redirect('/admin');
-    } else {
-        req.flash('error', 'Invalid username or password.');
-        res.redirect('/admin/login');
-    }
-});
-
-//router.post('/admin/login', passport.authenticate('local'), function (req, res) {
-//    console.log("Logged in successfully");
-//    res.redirect('/admin');
-//});
-
-router.get('/admin/login', function (req, res) {
-    //res.render('game', { title: 'Cards Against Continuity', GameID: req.params.id });
-    
-    var message = null;
-    if (req.flash('error'))
-        res.render('Backend/login', { title: 'Cards Against Continuity', message: req.flash('error') });
+  },
+  shallowPlayer: function(Player) {
+    if (!Player)
+      return null;
+    return {
+      _id: Player._id,
+      name: Player.name,
+      ready: Player.ready,
+      points: Player.points,
+      administrator: Player.administrator,
+      lastactivity: new Date(Player.lastactivity),
+      connected: Player.connected
+    };
+  },
+  shallowCard: function(Card) {
+    if (!Card)
+      return null;
+    if (Card.answers)
+      return app.functions.shallowQuestion(Card);
     else
-        res.render('Backend/login', { title: 'Cards Against Continuity' });
+      return app.functions.shallowAnswer(Card);
+  },
+  shallowQuestion: function(Card) {
+    if (!Card)
+      return null;
+    return {
+      _id: Card._id,
+      _expansion: Card._expansion,
+      text: Card.text,
+      answers: Card.answers
+    };
+  },
+  shallowAnswer: function(Card) {
+    if (!Card)
+      return null;
+    return {
+      _id: Card._id,
+      _expansion: Card._expansion,
+      text: Card.text
+    };
+  }
+};
 
+///////////////////////////////////////////////////////////////////////
+// Middleware
+///////////////////////////////////////////////////////////////////////
+app.use('/lib', express.static(path.join(__dirname, './bower_components')));
+app.use(function(req, res, next) {
+  res.io = app.io;
+  next();
 });
 
-router.get('/admin', function (req, res) {
-    var auth = IsAuthenticated(req);
-    console.log("[" + "Auth".green + "] Checking authentication: " + auth);
-    if (IsAuthenticated(req))
-        res.render('Backend/index', { title: 'Cards Against Continuity' , user: Users[req.session.UserID] });
-    else
-        res.redirect('/admin/login');
+// Ensure we have a player object.
+// Does one already exist in our session?
+app.use(function(req, res, next) {
+  if (req.session.player) {
+    app.db.getRecordById('Player', req.session.player)
+    .then(function(Player) {
+      if (Player)
+        req.Player = Player;
+      else
+        req.session.player = null;
+      next();
+    });
+  } else {
+    next();
+  }
+});
+// One does not exist, create.
+app.use(function(req, res, next) {
+  if (!req.Player) {
+    var Player = new app.schemas.Player({name: 'New Player'});
+    Player.save(function(err) {
+      if (err) {
+        next(err);
+      } else {
+        req.Player = Player;
+        req.session.player = Player._id;
+        next();
+      }
+    }, function(err) { next(err); });
+  } else {
+    next();
+  }
 });
 
-router.get('/admin/game/:id', function (req, res) {
-    if (IsAuthenticated(req)) {
-        var GameID = req.params.id;
-        if (app.GameManager.GameExists(GameID)) {
-            res.render('Backend/game', { title: 'Cards Against Continuity', user: Users[req.session.UserID], GameID: GameID })
-        } else {
-            res.render('Backend/game', { title: 'Cards Against Continuity', user: Users[req.session.UserID] });
-        }
-    } else {
-        res.redirect('/admin/login');
-    }
+// Populate a game
+app.use(function(req, res, next) {
+  if (req.Player && req.Player._game) {
+    app.db.getRecordById('Game', req.Player._game)
+    .then(function(Game) {
+      if (Game) {
+        req.Game = Game;
+      } else {
+        req.Player._game = null;
+        req.Player.save(function(err) {
+          if (err)
+            next(err);
+          else
+            next();
+        });
+      }
+      next();
+    }, function(err) { next(err); });
+  } else {
+    next();
+  }
 });
 
-router.get('/admin/cards', function (req, res) {
-    if (IsAuthenticated(req)) {
-        res.render('Backend/cardeditor.jade', { title: 'Cards Against Continuity', user: Users[req.session.UserID] });
-    } else {
-        res.redirect('/admin/login');
-    }
+
+// At this point, req.Player and req.Game should both be populated
+// reliably.  req.Player will always be a value.  req.Game will be
+// a value if the player is a member of an active game.
+
+///////////////////////////////////////////////////////////////////////
+// Routes
+///////////////////////////////////////////////////////////////////////
+
+app.route('/partials/*?')
+.get(function(req, res) {
+  res.render('partials/' + req.params[0]);
 });
 
-app.use(router);
-
-//////////////////////////////////////////////////////////
+app.route('*')
+.get(function(req, res) {
+  var scripts = [];
+  walk.sync('./public/js', function(dir, stat) {
+    if (stat.isFile() && path.extname(dir) === '.js')
+      scripts.push('/' + path.relative(__dirname + '/public/', dir));
+  });
+  res.render('index', {scripts: scripts});
+})
 
 // catch 404 and forward to error handler
-app.use(function (req, res, next) {
-    var err = new Error('Not Found');
-    err.status = 404;
-    next(err);
+app.use(function(req, res, next) {
+  var err = new Error('Not Found');
+  err.status = 404;
+  next(err);
 });
 
 // error handlers
 
 // development error handler
 // will print stacktrace
-//if (app.get('env') === 'development') {
-app.locals.pretty = true;
-app.use(function (err, req, res, next) {
+if (app.get('env') === 'development') {
+  app.use(function(err, req, res, next) {
     res.status(err.status || 500);
     res.render('error', {
-        message: err.message,
-        error: err
+      message: err.message,
+      error: err
     });
-});
-//}
+  });
+}
 
 // production error handler
 // no stacktraces leaked to user
-//app.use(function (err, req, res, next) {
-//    res.status(err.status || 500);
-//    res.render('error', {
-//        message: err.message,
-//        error: {}
-//    });
-//});
+app.use(function(err, req, res, next) {
+  res.status(err.status || 500);
+  res.render('error', {
+    message: err.message,
+    error: {}
+  });
+});
 
 
-//////////////////////////////////////////////////////////
-//  Nearby users registry
-//////////////////////////////////////////////////////////
-//app.UserLocations = require('./userlocation');
-var UserLocationRepository = require('./userlocation');
-app.UserLocations = new UserLocationRepository();
+///////////////////////////////////////////////////////////////////////
+//  Sockets
+///////////////////////////////////////////////////////////////////////
 
-// Sockets
-var socket_io = require("socket.io");
-var io = socket_io();
-io.use(sharedsession(SessionMiddleware, {
-    autoSave: true
-}));
-app.io = io;
-require("./sockets")(app);
+function setupSocket(socket) {
+  var deferred = q.defer();
+
+  if (socket.handshake.session && socket.handshake.session.player) {
+    app.db.getRecordById('Player', socket.handshake.session.player, 'answers selectedanswers')
+    .then(function(Player) {
+      if (Player) {
+        socket.Player = Player;
+        if (Player._game)
+          return app.db.getRecordById('Game', Player._game, 'currentquestion');
+      }
+    })
+    .then(function(Game) {
+      if (Game) {
+        socket.Game = Game;
+        if (socket.Player)
+          socket.Player._game = Game;
+      }
+      deferred.resolve();
+    })
+    .catch(function(err) { deferred.reject(err); });
+  }
+
+  return deferred.promise;
+}
 
 
+app.io.on('connection', function(socket) {
+  setupSocket(socket)
+  .then(function() {
+    if (socket.Game && socket.Player) {
+      app.io.to(socket.Game._id).emit('player:connect', {player: socket.Player._id});
+      socket.join(socket.Game._id);
+    }
+    if (socket.Player) {
+      socket.Player.connected = true;
+      socket.Player.save(function() {});
+    }
+  });
 
-module.exports = app;
+  socket.on('disconnect', function() {
+    console.log("Socket disconnected.");
+    if (socket.Game)
+      app.io.to(socket.Game._id).emit('player:disconnect', {player: socket.Player._id});
+    if (socket.Player) {
+      socket.Player.connected = false;
+      socket.Player.disconnected = new Date();
+      socket.Player.save(function() {});
+    }
+  });
+
+  socket.on('*', function(arg) {
+    setupSocket(socket)
+    .then(function() {
+      var route = arg.data[0];
+      var data = arg.data[1];
+      var callback = arg.data[2];
+      var split = route.split(':');
+      if (split.length === 2) {
+        var channel = split[0];
+        var action = split[1];
+        //console.log("Socket request from player " + socket.Player._id + ": " + channel + ":" + action + "; ", data);
+        if (app.socketrouter && app.socketrouter[channel] && app.socketrouter[channel][action] && typeof app.socketrouter[channel][action] === 'function') {
+          var res = app.socketrouter[channel][action](socket, data, callback);
+          if (res && res.then && typeof res.then === 'function') {
+            res.then(function(data) {
+              callback(data);
+            });
+          }
+        } else {
+          console.error("Unknown socket route: " + route);
+        }
+      }
+    });
+  });
+});
+
+//module.exports = app;
+
+
+///////////////////////////////////////////////////////////////////////
+// Start Server
+///////////////////////////////////////////////////////////////////////
+httpServer.on('listening', function() {
+  console.log("Server listening on port " + app.get('port'));
+});
+
+mongoose.connection.on('error', function(err) {
+  console.error(err);
+  if (err.stack)
+    console.error(err.stack);
+});
+
+mongoose.connection.on('open', function() {
+  console.log("Connected to Mongo.");
+});
+
+mongoose.connection.on('disconnect', function() {
+  console.log("Disconnected from Mongo.");
+});
+
+mongoose.connect('localhost', 'cardsagainstcontinuity', function() {
+  httpServer.listen(app.get('port'));
+});
+
+
+///////////////////////////////////////////////////////////////////////
+// Cleanup daemon
+///////////////////////////////////////////////////////////////////////
+setInterval(function() {
+  removeIdlePlayers()
+  .then(removeEmptyGames);
+}, 60000);
+
+
+function removeEmptyGames() {
+  var deferred = q.defer();
+  var toRemove = [];
+  app.schemas.Game.find({})
+  .cursor()
+  .eachAsync(function(Game) {
+    return checkEmptyGame(Game._id)
+            .then(function(empty) {
+              if (empty)
+                toRemove.push(Game._id);
+            });
+  }, function() {
+    if (toRemove.length > 0) {
+      console.log("Removing " + toRemove.length + " empty game(s).");
+      app.schemas.Game.remove({_id: {$in: toRemove}})
+      .exec(function(err) {
+        if (err)
+          deferred.reject(err);
+        else
+          deferred.resolve();
+      });
+    }
+  });
+  return deferred.promise;
+}
+
+function checkEmptyGame(id) {
+  var deferred = q.defer();
+  app.schemas.Player.find({connected: true, _game: id})
+  .count(function(err, Count) {
+    if (err) {
+      deferred.reject(err);
+    } else {
+      deferred.resolve(Count === 0);
+    }
+  });
+  return deferred.promise;
+}
+
+function removeIdlePlayers() {
+  var deferred = q.defer();
+  var toRemove = [];
+  console.log("Looking for idle players ...");
+  app.schemas.Player.find({connected: false})
+  .cursor({batchSize: 100})
+  .eachAsync(function(Player) {
+    var idleTime = ((new Date().getTime() - new Date(Player.disconnected).getTime()) / 60000);
+    if (idleTime >= 10) {
+      toRemove.push(Player._id);
+      if (Player._game) {
+        app.io.to(Player._game).emit('player:removed', {player: Player._id});
+        return app.db.getRecordById('Player', Player._game)
+                .then(function(Game) {
+                  Game.discards.answers = Game.discards.answers.concat(Player.answers);
+                  if (Player.administrator) {
+                    Game.discards.questions.push(Game.currentquestion);
+                    Game.currentquestion = null;
+                  }
+                  return Game.save();
+                });
+      }
+    }
+  }, function() {
+    if (toRemove.length > 0) {
+      console.log("Removing " + toRemove.length + " idle player(s).");
+      app.schemas.Player.remove({_id: {$in: toRemove}})
+      .exec(function(err) {
+        if (err)
+          deferred.reject(err);
+        else
+          deferred.resolve();
+      });
+    }
+  });
+  return deferred.promise;
+}
