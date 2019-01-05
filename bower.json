@@ -1,5 +1,5 @@
 {
-  "name": "CardsAgainstContinuity",
+  "name": "cardsagainstcontinuity",
   "version": "1.0.0",
   "dependencies": {
     "angular": "^1.5.8",
